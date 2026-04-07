@@ -1,0 +1,141 @@
+{
+    "apcr_pcg_pnl": {
+        "headers": ["PCG PNL", "March", "2025-YTD"],
+        "rows": [
+            ["Total", -558, -1356]
+        ]
+    },
+    "apcr_attribution_by_node": {
+        "headers": ["Attribution by Node", "March", "2025-YTD"],
+        "rows": [
+            ["APCR_MAIN", -641, -5430],
+            ["APCR_INVENTORY", 316, -464],
+            ["APCR_FUNDING", 0, 0],
+            ["APCR_SPARE", 0, -474]
+        ]
+    },
+    "apcr_main_attribution": {
+        "headers": ["APCR Main Attribution", "March", "2025-YTD"],
+        "rows": [
+            ["Tracking Error HK", -485, -1260],
+            ["Tracking Error SG", 0, 0],
+            ["Tracking Error CN", 12, -174],
+            ["PBMM HK", 109, 245],
+            ["PBMM CN", 0, 0]
+        ]
+    },
+    "apcr_inventory_attribution": {
+        "headers": ["APCR Inventory Attribution", "March", "2025-YTD"],
+        "rows": [
+            ["HSI", -14, 13],
+            ["HSCEI", 44, -195],
+            ["HSTECH", -49, 64],
+            ["A50", 16, -445]
+        ]
+    },
+    "apcr_platform_contribution": {
+        "headers": ["Platform Contribution", "March", "2025-YTD"],
+        "rows": [
+            ["Stamp Saving", 673, 5562],
+            ["IOI Commission", 4, 18],
+            ["Follow On Commission", 1, 6],
+            ["EIC Saving (Internal)", 122, 265],
+            ["Total", 806, 5898]
+        ]
+    },
+    "apcr_risk": {
+        "headers": ["Risk", "Gross", "Risk"],
+        "rows": [
+            ["APCR", "48mm", "69K"]
+        ]
+    },
+    "jpcr_pcg_pnl": {
+        "headers": ["PCG PNL", "March", "2025-YTD"],
+        "rows": [
+            ["Total", -29, -289]
+        ]
+    },
+    "jpcr_attribution_by_node": {
+        "headers": ["Attribution by Node", "March", "2025-YTD"],
+        "rows": [
+            ["JPCR_MAIN", 0, -284],
+            ["JPCR_INVENTORY", -9, 0],
+            ["JPCR_SPARE", 0, 0]
+        ]
+    },
+    "jpcr_main_attribution": {
+        "headers": ["JPCR Main Attribution", "March", "2025-YTD"],
+        "rows": [
+            ["Tracking Error JP", 41, 15],
+            ["CR IOI", 2, 12],
+            ["LH Japan", -73, 0],
+            ["CMatch", 6, 17]
+        ]
+    },
+    "jpcr_inventory_attribution": {
+        "headers": ["JPCR Inventory Attribution", "March", "2025-YTD"],
+        "rows": [
+            ["NKY", 0, -8],
+            ["TPX", -1, 0],
+            ["EFP", 0, 0]
+        ]
+    },
+    "jpcr_platform_contribution": {
+        "headers": ["Platform Contribution", "March", "2025-YTD"],
+        "rows": [
+            ["HT Commission", 0, 2],
+            ["Follow On Commission", 1, 0],
+            ["EIC Saving (Internal)", 10, 22],
+            ["EIC Saving (Agency)", 25, 63],
+            ["Total", 36, 88]
+        ]
+    },
+    "jpcr_risk": {
+        "headers": ["Risk", "Gross", "Risk"],
+        "rows": [
+            ["JPCR", "9mm", "14K"]
+        ]
+    },
+    "sl_pcg_pnl": {
+        "headers": ["PCG PNL", "March", "2025-YTD"],
+        "rows": [
+            ["Total", 1211, 1026]
+        ]
+    },
+    "sl_attribution_by_node": {
+        "headers": ["Attribution by Node", "March", "2025-YTD"],
+        "rows": [
+            ["APSL_AU", 0, 0],
+            ["APSL_CN", 0, -1],
+            ["APSL_HK", 983, 154],
+            ["APSL_SG", 97, 0],
+            ["APSL_FEE", 0, 0],
+            ["APSL_SPARE", 0, 0]
+        ]
+    },
+    "sl_risk": {
+        "headers": ["Risk", "Gross", "Risk"],
+        "rows": [
+            ["SL", "109mm", "242K"]
+        ]
+    },
+    "market": {
+        "headers": ["Market", "Gross"],
+        "rows": [
+            ["HK", "27mm"],
+            ["CN", "15mm"],
+            ["SG", "0mm"],
+            ["Total", "48mm"]
+        ]
+    },
+    "index_inventory": {
+        "headers": ["Index Inventory", "Gross"],
+        "rows": [
+            ["HSI", "18mm"],
+            ["HSCEI", "25mm"],
+            ["HSTECH", "0mm"],
+            ["A50", "10mm"],
+            ["Total", "54mm"]
+        ]
+    }
+}

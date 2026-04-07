@@ -1,0 +1,22 @@
+import logging
+from pathlib import Path
+from datetime import datetime
+
+from config import SMTP_HOST, SMTP_PORT, FROM_ADDRESS
+
+logger = logging.getLogger(__name__)
+
+
+def send_email(html, subject, to_list, cc_list):
+    # Stub: save HTML to local file and log
+    output_dir = Path(__file__).parent / "output" / "sent_emails"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    file_path = output_dir / f"{timestamp}.html"
+    with open(file_path, "w", encoding="utf-8") as f:
+        f.write(html)
+    logger.info(f"[STUB] Email sent - Subject: {subject}")
+    logger.info(f"[STUB] To: {to_list}, CC: {cc_list}")
+    logger.info(f"[STUB] Saved to: {file_path}")
+    logger.info(f"[STUB] SMTP would use {SMTP_HOST}:{SMTP_PORT} from {FROM_ADDRESS}")
+    return str(file_path)

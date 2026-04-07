@@ -1,0 +1,429 @@
+{
+    "settings": {
+        "row_gap": 4,
+        "default_table_gap": 4
+    },
+    "tables": {
+        "apcr_pcg_pnl": {
+            "name": "PCG PNL",
+            "function": "get_book_pcg_pnl",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "APCR"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                60,
+                60
+            ]
+        },
+        "apcr_attribution_by_node": {
+            "name": "Attribution by Node",
+            "function": "get_book_attribution_by_node",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "APCR"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                110,
+                60,
+                60
+            ]
+        },
+        "apcr_main_attribution": {
+            "name": "APCR Main Attribution",
+            "function": "get_book_main_attribution",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "APCR"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                110,
+                60,
+                60
+            ]
+        },
+        "apcr_inventory_attribution": {
+            "name": "APCR Inventory Attribution",
+            "function": "get_book_inventory_attribution",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "APCR"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                110,
+                60,
+                60
+            ]
+        },
+        "apcr_platform_contribution": {
+            "name": "Platform Contribution",
+            "function": "get_book_platform_contribution",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "APCR"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                130,
+                60,
+                60
+            ]
+        },
+        "apcr_risk": {
+            "name": "Risk",
+            "function": "get_book_risk",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "APCR"
+            },
+            "col_formats": [
+                "raw",
+                "raw",
+                "raw"
+            ],
+            "col_widths": [
+                50,
+                60,
+                60
+            ]
+        },
+        "jpcr_pcg_pnl": {
+            "name": "PCG PNL",
+            "function": "get_book_pcg_pnl",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "JPCR"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                60,
+                60
+            ]
+        },
+        "jpcr_attribution_by_node": {
+            "name": "Attribution by Node",
+            "function": "get_book_attribution_by_node",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "JPCR"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                110,
+                60,
+                60
+            ]
+        },
+        "jpcr_main_attribution": {
+            "name": "JPCR Main Attribution",
+            "function": "get_book_main_attribution",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "JPCR"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                110,
+                60,
+                60
+            ]
+        },
+        "jpcr_inventory_attribution": {
+            "name": "JPCR Inventory Attribution",
+            "function": "get_book_inventory_attribution",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "JPCR"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                60,
+                60
+            ]
+        },
+        "jpcr_platform_contribution": {
+            "name": "Platform Contribution",
+            "function": "get_book_platform_contribution",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "JPCR"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                130,
+                60,
+                60
+            ]
+        },
+        "jpcr_risk": {
+            "name": "Risk",
+            "function": "get_book_risk",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "JPCR"
+            },
+            "col_formats": [
+                "raw",
+                "raw",
+                "raw"
+            ],
+            "col_widths": [
+                50,
+                60,
+                60
+            ]
+        },
+        "sl_pcg_pnl": {
+            "name": "PCG PNL",
+            "function": "get_book_pcg_pnl",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "SL"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                60,
+                60
+            ]
+        },
+        "sl_attribution_by_node": {
+            "name": "Attribution by Node",
+            "function": "get_book_attribution_by_node",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "SL"
+            },
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                60,
+                60
+            ]
+        },
+        "sl_risk": {
+            "name": "Risk",
+            "function": "get_book_risk",
+            "params": {
+                "report_type": "monthly_paa",
+                "book": "SL"
+            },
+            "col_formats": [
+                "raw",
+                "raw",
+                "raw"
+            ],
+            "col_widths": [
+                50,
+                60,
+                60
+            ]
+        },
+        "market": {
+            "name": "Market",
+            "function": "get_market",
+            "params": {
+                "report_type": "monthly_paa"
+            },
+            "col_formats": [
+                "raw",
+                "raw"
+            ],
+            "col_widths": [
+                60,
+                60
+            ]
+        },
+        "index_inventory": {
+            "name": "Index Inventory",
+            "function": "get_index_inventory",
+            "params": {
+                "report_type": "monthly_paa"
+            },
+            "col_formats": [
+                "raw",
+                "raw"
+            ],
+            "col_widths": [
+                80,
+                60
+            ]
+        }
+    },
+    "layout": [
+        {
+            "id": "apcr_pcg_pnl",
+            "x": 0,
+            "y": 0,
+            "w": 2,
+            "h": 2
+        },
+        {
+            "id": "jpcr_pcg_pnl",
+            "x": 2,
+            "y": 0,
+            "w": 2,
+            "h": 2
+        },
+        {
+            "id": "sl_pcg_pnl",
+            "x": 4,
+            "y": 0,
+            "w": 2,
+            "h": 2
+        },
+        {
+            "id": "apcr_attribution_by_node",
+            "x": 0,
+            "y": 2,
+            "w": 3,
+            "h": 2
+        },
+        {
+            "id": "jpcr_attribution_by_node",
+            "x": 3,
+            "y": 2,
+            "w": 3,
+            "h": 2
+        },
+        {
+            "id": "sl_attribution_by_node",
+            "x": 6,
+            "y": 2,
+            "w": 2,
+            "h": 3
+        },
+        {
+            "id": "apcr_main_attribution",
+            "x": 0,
+            "y": 5,
+            "w": 3,
+            "h": 2
+        },
+        {
+            "id": "jpcr_main_attribution",
+            "x": 3,
+            "y": 5,
+            "w": 3,
+            "h": 2
+        },
+        {
+            "id": "sl_risk",
+            "x": 6,
+            "y": 5,
+            "w": 2,
+            "h": 2
+        },
+        {
+            "id": "apcr_inventory_attribution",
+            "x": 0,
+            "y": 7,
+            "w": 3,
+            "h": 2
+        },
+        {
+            "id": "jpcr_inventory_attribution",
+            "x": 3,
+            "y": 7,
+            "w": 2,
+            "h": 2
+        },
+        {
+            "id": "apcr_platform_contribution",
+            "x": 0,
+            "y": 9,
+            "w": 3,
+            "h": 2
+        },
+        {
+            "id": "jpcr_platform_contribution",
+            "x": 3,
+            "y": 9,
+            "w": 3,
+            "h": 2
+        },
+        {
+            "id": "apcr_risk",
+            "x": 0,
+            "y": 11,
+            "w": 2,
+            "h": 2
+        },
+        {
+            "id": "jpcr_risk",
+            "x": 2,
+            "y": 11,
+            "w": 2,
+            "h": 2
+        },
+        {
+            "id": "market",
+            "x": 0,
+            "y": 13,
+            "w": 2,
+            "h": 2
+        },
+        {
+            "id": "index_inventory",
+            "x": 2,
+            "y": 13,
+            "w": 2,
+            "h": 2
+        }
+    ]
+}

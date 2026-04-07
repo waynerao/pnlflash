@@ -1,0 +1,1203 @@
+{% extends "layout.html" %}
+
+{% block head %}
+<style>
+    .layout-canvas {
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+        position: relative;
+        overflow: visible;
+        font-family: Calibri, Arial, sans-serif;
+    }
+    .layout-table-wrapper {
+        position: absolute;
+        cursor: move;
+        z-index: 1;
+        user-select: none;
+    }
+    .layout-table-wrapper:hover {
+        outline: 2px solid #4a7ebb;
+        outline-offset: 1px;
+        z-index: 5;
+    }
+    .layout-table-wrapper.dragging {
+        opacity: 0.7;
+        z-index: 100;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    .layout-table-wrapper .tbl-remove {
+        display: none;
+        position: absolute;
+        top: -6px;
+        right: -6px;
+        background: #cc0000;
+        color: #fff;
+        border: none;
+        border-radius: 50%;
+        width: 16px;
+        height: 16px;
+        font-size: 11px;
+        line-height: 16px;
+        text-align: center;
+        cursor: pointer;
+        z-index: 10;
+        padding: 0;
+    }
+    .layout-table-wrapper:hover .tbl-remove {
+        display: block;
+    }
+    #tables-tbody tr {
+        cursor: grab;
+    }
+    #tables-tbody tr:active {
+        cursor: grabbing;
+    }
+    #tables-tbody tr.drag-over {
+        border-top: 2px solid #4a7ebb;
+    }
+    .drag-handle {
+        cursor: grab;
+        color: #aaa;
+        padding: 0 4px;
+        user-select: none;
+    }
+    .drag-handle:hover {
+        color: #666;
+    }
+    .guide-line {
+        position: absolute;
+        background: #ff6b6b;
+        z-index: 50;
+        pointer-events: none;
+    }
+    .guide-line-h {
+        height: 1px;
+        left: 0;
+        right: 0;
+    }
+    .guide-line-v {
+        width: 1px;
+        top: 0;
+        bottom: 0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="tabs">
+    <div class="tab active" data-tab="daily_pnl">Daily PnL Flash</div>
+    <div class="tab" data-tab="monthly_paa">Monthly PAA</div>
+    <div class="tab" data-tab="weekly_paa">Weekly PAA</div>
+    <div class="tab" data-tab="layout_config">Layout Config</div>
+</div>
+
+{% if flash_msg %}
+<div class="flash-msg {{ flash_type }}">{{ flash_msg }}</div>
+{% endif %}
+
+<!-- Daily PnL Flash Tab -->
+<div class="tab-content active" id="tab-daily_pnl">
+    <div class="toolbar">
+        <label>Date:</label>
+        <input type="date" id="daily-date" value="{{ today }}" lang="en-US">
+        <div class="sep"></div>
+        <span class="status-chip none" id="daily-dna-chip">DNA: --</span>
+        <button class="btn btn-primary btn-sm" onclick="loadData('daily_pnl', 'dna')">Load DNA Data</button>
+        <div class="sep"></div>
+        <span class="status-chip none" id="daily-live-chip">Live PnL: --</span>
+        <button class="btn btn-primary btn-sm" onclick="loadData('daily_pnl', 'live')">Load Live PnL</button>
+        <div class="sep"></div>
+        <span class="status-chip none" id="daily-hist-chip">Hist PnL: --</span>
+        <button class="btn btn-primary btn-sm" onclick="loadData('daily_pnl', 'hist')">Load Hist PnL</button>
+    </div>
+
+    <div class="adjustment-bar">
+        <span class="adj-title">T-1 Adjustment:</span>
+        <label>APCR:</label><input type="number" id="adj-apcr" value="0">
+        <label>JPCR:</label><input type="number" id="adj-jpcr" value="0">
+        <label>SL:</label><input type="number" id="adj-sl" value="0">
+    </div>
+
+    <div class="data-tables-grid" id="daily-data-tables"></div>
+
+    <div class="action-bar">
+        <button class="btn btn-secondary" onclick="resetEdits('daily_pnl')">Reset</button>
+        <button class="btn btn-success" onclick="openSendModal('daily_pnl')">Send Email</button>
+    </div>
+</div>
+
+<!-- Monthly PAA Tab -->
+<div class="tab-content" id="tab-monthly_paa">
+    <div class="toolbar">
+        <label>Month:</label>
+        <input type="month" id="monthly-date" value="{{ today_month }}" lang="en-US">
+        <div class="sep"></div>
+        <span class="status-chip none" id="monthly-dna-chip">DNA: --</span>
+        <button class="btn btn-primary btn-sm" onclick="loadData('monthly_paa', 'dna')">Load DNA Data</button>
+        <div class="sep"></div>
+        <span class="status-chip none" id="monthly-hist-chip">Hist PnL: --</span>
+        <button class="btn btn-primary btn-sm" onclick="loadData('monthly_paa', 'hist')">Load Hist PnL</button>
+    </div>
+
+    <div class="data-tables-grid" id="monthly-data-tables"></div>
+
+    <div class="action-bar">
+        <button class="btn btn-secondary" onclick="resetEdits('monthly_paa')">Reset</button>
+        <button class="btn btn-success" onclick="openSendModal('monthly_paa')">Send Email</button>
+    </div>
+</div>
+
+<!-- Weekly PAA Tab -->
+<div class="tab-content" id="tab-weekly_paa">
+    <div class="toolbar">
+        <label>Week:</label>
+        <input type="week" id="weekly-date" value="{{ today_week }}" lang="en-US">
+        <div class="sep"></div>
+        <span class="status-chip none" id="weekly-dna-chip">DNA: --</span>
+        <button class="btn btn-primary btn-sm" onclick="loadData('weekly_paa', 'dna')">Load DNA Data</button>
+        <div class="sep"></div>
+        <span class="status-chip none" id="weekly-hist-chip">Hist PnL: --</span>
+        <button class="btn btn-primary btn-sm" onclick="loadData('weekly_paa', 'hist')">Load Hist PnL</button>
+    </div>
+
+    <div class="data-tables-grid" id="weekly-data-tables"></div>
+
+    <div class="action-bar">
+        <button class="btn btn-secondary" onclick="resetEdits('weekly_paa')">Reset</button>
+        <button class="btn btn-success" onclick="openSendModal('weekly_paa')">Send Email</button>
+    </div>
+</div>
+
+<!-- Layout Config Tab -->
+<div class="tab-content" id="tab-layout_config">
+
+    <!-- Unlock bar -->
+    <div class="toolbar" id="unlock-bar">
+        <label>Password:</label>
+        <input type="password" id="setup-password" style="padding:2px 6px;border:1px solid #ccc;border-radius:2px;font-size:11px;width:150px;">
+        <div class="sep"></div>
+        <label>Report Type:</label>
+        <select id="report-type" style="padding:2px 6px;border:1px solid #ccc;border-radius:2px;font-size:11px;">
+            <option value="daily_pnl">Daily PnL Flash</option>
+            <option value="monthly_paa">Monthly PAA</option>
+            <option value="weekly_paa">Weekly PAA</option>
+        </select>
+        <button class="btn btn-primary" onclick="loadSetup()">Load</button>
+    </div>
+
+    <div id="setup-error" style="display:none;color:#cc0000;padding:6px 0;font-size:11px;"></div>
+
+    <!-- Setup content (hidden until loaded) -->
+    <div id="setup-content" style="display:none;">
+
+        <!-- Global Settings -->
+        <div class="toolbar" style="margin-bottom:8px;">
+            <label>Row Gap (px):</label>
+            <input type="number" id="setting-row-gap" value="4" min="0" style="width:50px;padding:2px 4px;border:1px solid #ccc;border-radius:2px;font-size:11px;text-align:right;">
+            <div class="sep"></div>
+            <label>Table Gap (px):</label>
+            <input type="number" id="setting-default-gap" value="4" min="0" style="width:50px;padding:2px 4px;border:1px solid #ccc;border-radius:2px;font-size:11px;text-align:right;">
+            <div class="sep"></div>
+            <label>Font Size (px):</label>
+            <input type="number" id="setting-font-size" value="11" min="8" max="16" style="width:50px;padding:2px 4px;border:1px solid #ccc;border-radius:2px;font-size:11px;text-align:right;">
+            <div class="sep"></div>
+            <button class="btn btn-secondary btn-sm" onclick="applySettings()">Apply</button>
+        </div>
+
+        <!-- Table Definitions -->
+        <div style="background:#fff;border:1px solid #ddd;border-radius:3px;padding:8px 10px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-weight:600;font-size:12px;">Table Definitions — drag rows to reorder</span>
+                <div style="display:flex;gap:4px;">
+                    <button class="btn btn-secondary btn-sm" onclick="saveOrder()">Save Order</button>
+                    <button class="btn btn-primary btn-sm" onclick="addTable()">+ Add Table</button>
+                </div>
+            </div>
+            <div id="tables-list"></div>
+        </div>
+
+        <!-- WYSIWYG Layout Editor -->
+        <div style="background:#f5f5f5;border:1px solid #ddd;border-radius:3px;padding:8px 10px;margin-bottom:8px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                <span style="font-weight:600;font-size:12px;">Email Layout — drag tables freely to position</span>
+                <div style="display:flex;gap:4px;">
+                    <select id="add-table-select" style="padding:2px 6px;border:1px solid #ccc;border-radius:2px;font-size:11px;max-width:200px;"></select>
+                    <button class="btn btn-primary btn-sm" onclick="addToLayout()">+ Add to Layout</button>
+                </div>
+            </div>
+            <div style="overflow:auto;">
+                <div id="layout-canvas" class="layout-canvas"></div>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="action-bar">
+            <button class="btn btn-success" onclick="saveLayout()">Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- Send Email Modal -->
+<div class="modal-overlay" id="send-modal">
+    <div class="modal" style="max-width:92vw;max-height:92vh;width:auto;">
+        <div class="modal-header">
+            <h2>Email Preview</h2>
+            <button class="btn btn-secondary btn-sm" onclick="closeSendModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="overflow:auto;">
+            <div class="email-field">
+                <label>Subject:</label>
+                <input type="text" id="modal-subject">
+            </div>
+            <div class="email-field">
+                <label>To:</label>
+                <input type="text" id="modal-to">
+            </div>
+            <div class="email-field">
+                <label>CC:</label>
+                <input type="text" id="modal-cc">
+            </div>
+            <div style="margin-top:8px;border-top:1px solid #eee;padding-top:8px;">
+                <div id="modal-preview-body" style="background:#fff;"></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="closeSendModal()">Cancel</button>
+            <button class="btn btn-success" id="modal-confirm-send" onclick="confirmSend()">Confirm Send</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const TOKEN = "{{ token }}";
+const EMAIL_CONFIG = {{ email_config | tojson }};
+const TABLE_FORMATS = {{ table_formats | tojson }};
+const AVAILABLE_FUNCTIONS = {{ data_functions | tojson }};
+
+// ==================== Dashboard State ====================
+
+let dataStore = { daily_pnl: {}, monthly_paa: {}, weekly_paa: {} };
+let originalData = { daily_pnl: {}, monthly_paa: {}, weekly_paa: {} };
+let currentSendTab = null;
+
+// Proper title formatting — keep APCR, JPCR, CR, SL, PAA, NPV, PNL, DNA uppercase
+const UPPERCASE_WORDS = ['APCR', 'JPCR', 'CR', 'SL', 'PAA', 'NPV', 'PNL', 'PCG', 'MTD', 'YTD', 'TD',
+    'HK', 'SG', 'CN', 'JP', 'AU', 'HSI', 'HSCEI', 'HSTECH', 'NKY', 'TPX', 'EFP', 'A50',
+    'IOI', 'EIC', 'PBMM', 'HT', 'APSL', 'DNA', 'PB', 'SL'];
+
+function formatTableTitle(key) {
+    return key.split('_').map(word => {
+        let upper = word.toUpperCase();
+        if (UPPERCASE_WORDS.includes(upper)) return upper;
+        return word.charAt(0).toUpperCase() + word.slice(1);
+    }).join(' ');
+}
+
+function formatCellWithScale(value, scale) {
+    if (value === null || value === '') return '';
+    if (typeof value === 'string') return value;
+    if (typeof value !== 'number') return String(value);
+    let neg = value < 0;
+    let abs = Math.abs(value);
+    let formatted;
+    if (scale === 'mm') {
+        formatted = (abs / 1000000).toFixed(0) + 'mm';
+    } else if (scale === 'K') {
+        formatted = (abs / 1000).toFixed(0) + 'K';
+    } else if (scale === 'auto') {
+        if (abs >= 1000000) formatted = (abs / 1000000).toFixed(0) + 'mm';
+        else if (abs >= 1000) formatted = (abs / 1000).toFixed(0) + 'K';
+        else formatted = abs.toFixed(0);
+    } else {
+        formatted = abs.toLocaleString();
+    }
+    return neg ? '(' + formatted + ')' : formatted;
+}
+
+function getColScale(reportType, tableKey, colIdx) {
+    let fmt = TABLE_FORMATS[reportType];
+    if (!fmt) return 'auto';
+    let tbl = fmt[tableKey];
+    if (!tbl) return 'auto';
+    if (Array.isArray(tbl)) return tbl[colIdx] || 'auto';
+    return tbl;
+}
+
+// ==================== Tab Switching ====================
+
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+    });
+});
+
+// ==================== Dashboard Data Loading ====================
+
+function loadData(reportType, source) {
+    let dateVal;
+    if (reportType === 'daily_pnl') dateVal = document.getElementById('daily-date').value;
+    else if (reportType === 'monthly_paa') dateVal = document.getElementById('monthly-date').value;
+    else dateVal = document.getElementById('weekly-date').value;
+
+    fetch(`/load?token=${TOKEN}&report_type=${reportType}&source=${source}&date=${dateVal}`)
+        .then(r => r.json())
+        .then(result => {
+            if (result.status === 'ok') {
+                updateStatusChip(reportType, source, result);
+                if (source === 'dna') {
+                    dataStore[reportType] = JSON.parse(JSON.stringify(result.data));
+                    originalData[reportType] = JSON.parse(JSON.stringify(result.data));
+                    renderDataTables(reportType);
+                }
+                if (source === 'hist') updateHistChipAll(result);
+            } else {
+                alert('Load failed: ' + (result.message || 'Unknown error'));
+            }
+        })
+        .catch(err => alert('Load error: ' + err));
+}
+
+function updateStatusChip(reportType, source, result) {
+    let prefix = reportType === 'daily_pnl' ? 'daily' : reportType === 'monthly_paa' ? 'monthly' : 'weekly';
+    let time = new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+
+    if (source === 'dna') {
+        let chip = document.getElementById(prefix + '-dna-chip');
+        chip.textContent = 'DNA: OK (' + time + ')';
+        chip.className = 'status-chip ok';
+    } else if (source === 'live') {
+        let chip = document.getElementById(prefix + '-live-chip');
+        chip.textContent = 'Live PnL: OK (' + time + ')';
+        chip.className = 'status-chip ok';
+    } else if (source === 'hist') {
+        setHistChip(prefix, result, time);
+    }
+}
+
+function setHistChip(prefix, result, time) {
+    let chip = document.getElementById(prefix + '-hist-chip');
+    if (!chip) return;
+    if (result.t1_available) {
+        chip.textContent = 'Hist PnL: ' + result.latest_date + ' (' + time + ')';
+        chip.className = 'status-chip ok';
+    } else {
+        chip.textContent = 'Hist PnL: T-1 N/A, latest ' + result.latest_date + ' (' + time + ')';
+        chip.className = 'status-chip warn';
+    }
+}
+
+function updateHistChipAll(result) {
+    let time = new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+    ['daily', 'monthly', 'weekly'].forEach(p => setHistChip(p, result, time));
+}
+
+// ==================== Editable Data Tables ====================
+
+function renderDataTables(reportType) {
+    let container;
+    if (reportType === 'daily_pnl') container = document.getElementById('daily-data-tables');
+    else if (reportType === 'monthly_paa') container = document.getElementById('monthly-data-tables');
+    else container = document.getElementById('weekly-data-tables');
+
+    let html = '';
+    let data = dataStore[reportType];
+    for (let key in data) {
+        let table = data[key];
+        if (!table.headers || !table.rows) continue;
+        let title = formatTableTitle(key);
+        html += '<div class="data-section">';
+        html += '<div class="table-title">' + title + '</div>';
+        html += '<table class="data-table"><thead><tr>';
+        table.headers.forEach(h => { html += '<th>' + h + '</th>'; });
+        html += '</tr></thead><tbody>';
+        table.rows.forEach((row, ri) => {
+            html += '<tr>';
+            row.forEach((cell, ci) => {
+                let scale = getColScale(reportType, key, ci);
+                let displayVal = (ci === 0) ? cell : formatCellWithScale(cell, scale);
+                let isNeg = (typeof cell === 'number' && cell < 0) || (typeof cell === 'string' && cell.startsWith('('));
+                let origVal = originalData[reportType][key] && originalData[reportType][key].rows[ri] ? originalData[reportType][key].rows[ri][ci] : cell;
+                let isEdited = (String(cell) !== String(origVal));
+                html += '<td class="' + (isNeg ? 'negative ' : '') + (isEdited ? 'edited ' : '') + '"';
+                if (isEdited) html += ' title="Original: ' + origVal + '"';
+                html += ' contenteditable="true"';
+                html += ' data-key="' + key + '" data-row="' + ri + '" data-col="' + ci + '"';
+                html += ' onblur="onCellEdit(this, \'' + reportType + '\')">';
+                html += displayVal;
+                html += '</td>';
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table></div>';
+    }
+    container.innerHTML = html;
+}
+
+function onCellEdit(td, reportType) {
+    let key = td.dataset.key;
+    let row = parseInt(td.dataset.row);
+    let col = parseInt(td.dataset.col);
+    let rawText = td.textContent.trim();
+    let parsed = parseEditedValue(rawText);
+    dataStore[reportType][key].rows[row][col] = parsed;
+
+    let origVal = originalData[reportType][key].rows[row][col];
+    if (String(parsed) !== String(origVal)) {
+        td.classList.add('edited');
+        td.title = 'Original: ' + origVal;
+    } else {
+        td.classList.remove('edited');
+        td.removeAttribute('title');
+    }
+    let isNeg = (typeof parsed === 'number' && parsed < 0) || (typeof parsed === 'string' && parsed.startsWith('('));
+    if (isNeg) td.classList.add('negative');
+    else td.classList.remove('negative');
+}
+
+function parseEditedValue(text) {
+    if (!text) return '';
+    let negative = false;
+    let clean = text;
+    if (clean.startsWith('(') && clean.endsWith(')')) { negative = true; clean = clean.slice(1, -1); }
+    if (clean.endsWith('mm')) {
+        let n = parseFloat(clean.replace(/,/g, ''));
+        if (!isNaN(n)) return negative ? -n * 1000000 : n * 1000000;
+    }
+    if (clean.endsWith('K')) {
+        let n = parseFloat(clean.replace(/,/g, ''));
+        if (!isNaN(n)) return negative ? -n * 1000 : n * 1000;
+    }
+    let n = parseFloat(clean.replace(/,/g, ''));
+    if (!isNaN(n)) return negative ? -n : n;
+    return text;
+}
+
+function resetEdits(reportType) {
+    dataStore[reportType] = JSON.parse(JSON.stringify(originalData[reportType]));
+    renderDataTables(reportType);
+}
+
+// ==================== Send Email ====================
+
+function openSendModal(reportType) {
+    currentSendTab = reportType;
+    let cfg = EMAIL_CONFIG[reportType];
+    let dateVal;
+    if (reportType === 'daily_pnl') dateVal = document.getElementById('daily-date').value;
+    else if (reportType === 'monthly_paa') dateVal = document.getElementById('monthly-date').value;
+    else dateVal = document.getElementById('weekly-date').value;
+    let dateStr = dateVal.replace(/-/g, '').substring(0, 8);
+    if (dateStr.length < 8) dateStr = dateVal.replace(/-/g, '').replace('W', '') + '01';
+
+    document.getElementById('modal-subject').value = cfg.subject + ' ' + dateStr;
+    document.getElementById('modal-to').value = cfg.to.join(', ');
+    document.getElementById('modal-cc').value = cfg.cc.join(', ');
+
+    fetch(`/preview?token=${TOKEN}&report_type=${reportType}&date=${dateVal}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({data: dataStore[reportType]})
+    })
+    .then(r => r.json())
+    .then(result => {
+        document.getElementById('modal-preview-body').innerHTML = result.html;
+    });
+    document.getElementById('send-modal').classList.add('active');
+}
+
+function closeSendModal() {
+    document.getElementById('send-modal').classList.remove('active');
+    currentSendTab = null;
+}
+
+function confirmSend() {
+    let subject = document.getElementById('modal-subject').value;
+    let toList = document.getElementById('modal-to').value;
+    let ccList = document.getElementById('modal-cc').value;
+    let dateVal;
+    if (currentSendTab === 'daily_pnl') dateVal = document.getElementById('daily-date').value;
+    else if (currentSendTab === 'monthly_paa') dateVal = document.getElementById('monthly-date').value;
+    else dateVal = document.getElementById('weekly-date').value;
+
+    fetch(`/send?token=${TOKEN}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            report_type: currentSendTab, date: dateVal,
+            subject: subject, to: toList, cc: ccList,
+            data: dataStore[currentSendTab]
+        })
+    })
+    .then(r => r.json())
+    .then(result => {
+        closeSendModal();
+        if (result.status === 'ok') alert('Email sent successfully!\nSaved to: ' + result.file_path);
+        else alert('Send failed: ' + (result.message || 'Unknown error'));
+    })
+    .catch(err => { closeSendModal(); alert('Send error: ' + err); });
+}
+
+// ==================== Layout Config State ====================
+
+let currentLayout = null;
+let tableDimensions = {};
+let renderedTables = {};
+let emailWidth = 1000;
+let tableOrder = [];
+
+function getSetupPassword() {
+    return sessionStorage.getItem('setup_password') || '';
+}
+
+function setSetupPassword(pw) {
+    sessionStorage.setItem('setup_password', pw);
+}
+
+function loadSetup() {
+    let passwordInput = document.getElementById('setup-password');
+    let password = passwordInput.value;
+    if (password) {
+        setSetupPassword(password);
+    } else {
+        password = getSetupPassword();
+    }
+    let reportType = document.getElementById('report-type').value;
+    fetch('/setup/load?token=' + TOKEN, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({password: password, report_type: reportType})
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.status === 'ok') {
+            currentLayout = result.layout;
+            tableDimensions = result.dimensions || {};
+            renderedTables = result.rendered_tables || {};
+            emailWidth = result.email_width || 1000;
+            document.getElementById('setup-content').style.display = 'block';
+            document.getElementById('setup-error').style.display = 'none';
+            document.getElementById('setting-row-gap').value = currentLayout.settings.row_gap || 4;
+            document.getElementById('setting-default-gap').value = currentLayout.settings.default_table_gap || 4;
+            document.getElementById('setting-font-size').value = currentLayout.settings.font_size || 11;
+            tableOrder = currentLayout.settings.table_order || Object.keys(currentLayout.tables);
+            for (let id in currentLayout.tables) {
+                if (!tableOrder.includes(id)) tableOrder.push(id);
+            }
+            tableOrder = tableOrder.filter(id => currentLayout.tables[id]);
+            convertToPixelPositions();
+            renderTablesEditor();
+            updateAddTableSelect();
+            renderCanvas();
+            // Clear password field after successful auth
+            passwordInput.value = '';
+        } else {
+            document.getElementById('setup-error').textContent = result.message;
+            document.getElementById('setup-error').style.display = 'block';
+        }
+    });
+}
+
+// ==================== Pixel position conversion ====================
+
+function getTablePixelWidth(tableId) {
+    let t = currentLayout.tables[tableId];
+    if (t && t.col_widths && t.col_widths.length) return t.col_widths.reduce((a, b) => a + b, 0);
+    return 80;
+}
+
+function getTablePixelHeight(tableId) {
+    let dim = tableDimensions[tableId];
+    let rows = dim ? dim.rows : 3;
+    return (rows + 2) * 18;
+}
+
+function convertToPixelPositions() {
+    let items = currentLayout.layout;
+    if (!items || !items.length) return;
+
+    let maxY = Math.max(...items.map(i => i.y || 0));
+    if (maxY > 20) return;
+
+    let byY = {};
+    items.forEach(item => {
+        let y = item.y || 0;
+        if (!byY[y]) byY[y] = [];
+        byY[y].push(item);
+    });
+
+    let yKeys = Object.keys(byY).map(Number).sort((a, b) => a - b);
+    let defaultGap = currentLayout.settings.default_table_gap || 4;
+    let rowGap = currentLayout.settings.row_gap || 4;
+    let currentYPx = 0;
+
+    yKeys.forEach(yKey => {
+        let rowItems = byY[yKey].sort((a, b) => (a.x || 0) - (b.x || 0));
+        let maxHeight = 0;
+        let currentXPx = 0;
+
+        rowItems.forEach(item => {
+            let wPx = getTablePixelWidth(item.id);
+            let hPx = getTablePixelHeight(item.id);
+            item.x = currentXPx;
+            item.y = currentYPx;
+            currentXPx += wPx + defaultGap;
+            maxHeight = Math.max(maxHeight, hPx);
+        });
+
+        currentYPx += maxHeight + rowGap;
+    });
+}
+
+// ==================== Table Definitions ====================
+
+function renderTablesEditor() {
+    let container = document.getElementById('tables-list');
+    let html = '<table style="width:100%;border-collapse:collapse;font-size:11px;">';
+    html += '<thead><tr style="background:#f5f5f5;">';
+    html += '<th style="width:20px;padding:3px 2px;"></th>';
+    html += '<th style="text-align:left;padding:3px 6px;">ID</th>';
+    html += '<th style="text-align:left;padding:3px 6px;">Name</th>';
+    html += '<th style="text-align:center;padding:3px 6px;">Rows</th>';
+    html += '<th style="text-align:left;padding:3px 6px;">Function</th>';
+    html += '<th style="text-align:left;padding:3px 6px;">Params</th>';
+    html += '<th style="text-align:left;padding:3px 6px;">Col Formats</th>';
+    html += '<th style="text-align:left;padding:3px 6px;">Col Widths</th>';
+    html += '<th style="padding:3px 6px;">Actions</th>';
+    html += '</tr></thead>';
+    html += '<tbody id="tables-tbody">';
+    for (let id of tableOrder) {
+        let t = currentLayout.tables[id];
+        if (!t) continue;
+        let dr = t.display_rows != null ? t.display_rows : '\u2014';
+        html += '<tr data-id="' + id + '" style="border-bottom:1px solid #eee;">';
+        html += '<td class="drag-handle" style="padding:3px 2px;text-align:center;">&#9776;</td>';
+        html += '<td style="padding:3px 6px;"><code>' + id + '</code></td>';
+        html += '<td style="padding:3px 6px;">' + t.name + '</td>';
+        html += '<td style="padding:3px 6px;text-align:center;">' + dr + '</td>';
+        html += '<td style="padding:3px 6px;"><code>' + t.function + '</code></td>';
+        html += '<td style="padding:3px 6px;"><code>' + JSON.stringify(t.params || {}) + '</code></td>';
+        html += '<td style="padding:3px 6px;">' + (t.col_formats || []).join(', ') + '</td>';
+        html += '<td style="padding:3px 6px;">' + (t.col_widths || []).join(', ') + '</td>';
+        html += '<td style="padding:3px 6px;text-align:center;"><button class="btn btn-primary btn-sm" onclick="editTable(\'' + id + '\')">Edit</button> <button class="btn btn-danger btn-sm" onclick="deleteTable(\'' + id + '\')">Del</button></td>';
+        html += '</tr>';
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+    initTableDrag();
+}
+
+function initTableDrag() {
+    let tbody = document.getElementById('tables-tbody');
+    if (!tbody) return;
+    let dragRow = null;
+
+    tbody.querySelectorAll('tr').forEach(row => {
+        row.setAttribute('draggable', 'true');
+
+        row.addEventListener('dragstart', function(e) {
+            dragRow = this;
+            this.style.opacity = '0.4';
+            e.dataTransfer.effectAllowed = 'move';
+        });
+
+        row.addEventListener('dragend', function() {
+            this.style.opacity = '';
+            tbody.querySelectorAll('tr').forEach(r => r.classList.remove('drag-over'));
+            dragRow = null;
+            tableOrder = [];
+            tbody.querySelectorAll('tr').forEach(r => {
+                let id = r.getAttribute('data-id');
+                if (id) tableOrder.push(id);
+            });
+        });
+
+        row.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+            this.classList.add('drag-over');
+        });
+
+        row.addEventListener('dragleave', function() {
+            this.classList.remove('drag-over');
+        });
+
+        row.addEventListener('drop', function(e) {
+            e.preventDefault();
+            this.classList.remove('drag-over');
+            if (dragRow && dragRow !== this) {
+                tbody.insertBefore(dragRow, this);
+            }
+        });
+    });
+}
+
+function addTable() {
+    let id = prompt('Table ID (snake_case, e.g., "my_new_table"):');
+    if (!id) return;
+    id = id.trim().toLowerCase().replace(/\s+/g, '_');
+    if (currentLayout.tables[id]) { alert('Table ID already exists'); return; }
+    currentLayout.tables[id] = {
+        name: id.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+        function: AVAILABLE_FUNCTIONS[0] || '',
+        params: {},
+        col_formats: ['raw'],
+        col_widths: [80]
+    };
+    tableOrder.push(id);
+    editTable(id);
+    updateAddTableSelect();
+}
+
+function editTable(id) {
+    let t = currentLayout.tables[id];
+    let item = currentLayout.layout.find(i => i.id === id);
+    let xVal = item ? item.x : '';
+    let yVal = item ? item.y : '';
+    let drVal = t.display_rows != null ? t.display_rows : '';
+    let modal = document.createElement('div');
+    modal.className = 'modal-overlay active';
+    modal.innerHTML = `
+    <div class="modal" style="max-width:600px;">
+        <div class="modal-header"><h2>Edit Table: ${id}</h2><button class="btn btn-secondary btn-sm" onclick="this.closest('.modal-overlay').remove()">&times;</button></div>
+        <div class="modal-body">
+            <div class="email-field"><label>Name:</label><input type="text" id="edit-name" value="${t.name}"></div>
+            <div class="email-field"><label>Display Rows:</label><input type="number" id="edit-display-rows" value="${drVal}" min="0" style="width:70px;" placeholder="auto"></div>
+            <div class="email-field">
+                <label>Position:</label>
+                <span style="font-size:10px;color:#888;margin-right:4px;">X:</span>
+                <input type="number" id="edit-x" value="${xVal}" min="0" style="width:70px;" placeholder="px">
+                <span style="font-size:10px;color:#888;margin:0 4px;">Y:</span>
+                <input type="number" id="edit-y" value="${yVal}" min="0" style="width:70px;" placeholder="px">
+            </div>
+            <div class="email-field"><label>Function:</label>
+                <select id="edit-function" style="flex:1;padding:3px 6px;border:1px solid #ccc;border-radius:2px;font-size:11px;">
+                    ${AVAILABLE_FUNCTIONS.map(f => '<option value="' + f + '"' + (f === t.function ? ' selected' : '') + '>' + f + '</option>').join('')}
+                </select>
+            </div>
+            <div class="email-field"><label>Params:</label><input type="text" id="edit-params" value='${JSON.stringify(t.params || {})}'></div>
+            <div class="email-field"><label>Col Headers:</label><input type="text" id="edit-headers" value="${(t.col_headers || []).join(', ')}" placeholder="(optional) override column headers"></div>
+            <div class="email-field"><label>Col Formats:</label><input type="text" id="edit-formats" value="${(t.col_formats || []).join(', ')}" placeholder="raw, K, mm"></div>
+            <div class="email-field"><label>Col Widths:</label><input type="text" id="edit-widths" value="${(t.col_widths || []).join(', ')}" placeholder="80, 60, 60"></div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+            <button class="btn btn-success" onclick="saveTableEdit('${id}', this.closest('.modal-overlay'))">Save</button>
+        </div>
+    </div>`;
+    document.body.appendChild(modal);
+}
+
+function saveTableEdit(id, modal) {
+    let t = currentLayout.tables[id];
+    t.name = modal.querySelector('#edit-name').value;
+    t.function = modal.querySelector('#edit-function').value;
+    try { t.params = JSON.parse(modal.querySelector('#edit-params').value); } catch(e) { t.params = {}; }
+    let headersVal = modal.querySelector('#edit-headers').value.trim();
+    if (headersVal) {
+        t.col_headers = headersVal.split(',').map(s => s.trim());
+    } else {
+        delete t.col_headers;
+    }
+    t.col_formats = modal.querySelector('#edit-formats').value.split(',').map(s => s.trim()).filter(s => s);
+    t.col_widths = modal.querySelector('#edit-widths').value.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+
+    let drInput = modal.querySelector('#edit-display-rows').value.trim();
+    if (drInput === '') {
+        delete t.display_rows;
+    } else {
+        let dr = parseInt(drInput);
+        if (!isNaN(dr) && dr >= 0) t.display_rows = dr;
+    }
+
+    let newX = parseInt(modal.querySelector('#edit-x').value);
+    let newY = parseInt(modal.querySelector('#edit-y').value);
+    if (!isNaN(newX) && !isNaN(newY)) {
+        let item = currentLayout.layout.find(i => i.id === id);
+        if (item) {
+            item.x = newX;
+            item.y = newY;
+        }
+    }
+
+    modal.remove();
+    renderTablesEditor();
+    reRenderTable(id, true);
+}
+
+function reRenderTable(tableId, autoSave) {
+    let password = getSetupPassword();
+    fetch('/setup/render_table?token=' + TOKEN, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({password: password, table_id: tableId, table_def: currentLayout.tables[tableId], font_size: currentLayout.settings.font_size || 11})
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.status === 'ok') {
+            renderedTables[tableId] = result.html;
+        }
+        renderCanvas();
+        if (autoSave) autoSaveLayout();
+    })
+    .catch(err => {
+        console.error('reRenderTable failed:', err);
+        renderCanvas();
+    });
+}
+
+function autoSaveLayout() {
+    let layout = gatherLayout();
+    let password = getSetupPassword();
+    let reportType = document.getElementById('report-type').value;
+    fetch('/setup/save?token=' + TOKEN, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({password: password, report_type: reportType, layout: layout})
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.status !== 'ok') console.error('Auto-save failed:', result.message);
+    })
+    .catch(err => console.error('Auto-save error:', err));
+}
+
+function saveOrder() {
+    let layout = gatherLayout();
+    let password = getSetupPassword();
+    let reportType = document.getElementById('report-type').value;
+    fetch('/setup/save?token=' + TOKEN, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({password: password, report_type: reportType, layout: layout})
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.status === 'ok') alert('Order and definitions saved!');
+        else alert('Save failed: ' + result.message);
+    });
+}
+
+function deleteTable(id) {
+    if (!confirm('Delete table "' + id + '"?')) return;
+    delete currentLayout.tables[id];
+    delete renderedTables[id];
+    currentLayout.layout = currentLayout.layout.filter(item => item.id !== id);
+    tableOrder = tableOrder.filter(i => i !== id);
+    renderTablesEditor();
+    updateAddTableSelect();
+    renderCanvas();
+}
+
+// ==================== Free-form Canvas ====================
+
+function renderCanvas() {
+    let canvas = document.getElementById('layout-canvas');
+    let items = currentLayout.layout || [];
+
+    let canvasW = emailWidth + 40;
+    let canvasH = 200;
+    items.forEach(item => {
+        let x = item.x || 0;
+        let y = item.y || 0;
+        let w = getTablePixelWidth(item.id);
+        let h = getTablePixelHeight(item.id);
+        canvasW = Math.max(canvasW, x + w + 20);
+        canvasH = Math.max(canvasH, y + h + 20);
+    });
+    canvas.style.width = canvasW + 'px';
+    canvas.style.height = canvasH + 'px';
+
+    let html = '';
+    items.forEach(item => {
+        if (!currentLayout.tables[item.id]) return;
+        let tableHtml = renderedTables[item.id] || '<div style="padding:4px;font-size:10px;color:#999;border:1px dashed #ccc;">' + item.id + '</div>';
+        let x = item.x || 0;
+        let y = item.y || 0;
+        html += '<div class="layout-table-wrapper" data-id="' + item.id + '" style="left:' + x + 'px;top:' + y + 'px;">';
+        html += '<button class="tbl-remove" onmousedown="event.stopPropagation();" onclick="removeFromLayout(\'' + item.id + '\')">&times;</button>';
+        html += tableHtml;
+        html += '</div>';
+    });
+    canvas.innerHTML = html;
+    initCanvasDrag();
+}
+
+let dragState = null;
+
+function initCanvasDrag() {
+    let canvas = document.getElementById('layout-canvas');
+    canvas.querySelectorAll('.layout-table-wrapper').forEach(el => {
+        el.addEventListener('mousedown', onCanvasMouseDown);
+    });
+}
+
+function onCanvasMouseDown(e) {
+    if (e.target.classList.contains('tbl-remove')) return;
+    e.preventDefault();
+    let el = e.currentTarget;
+
+    dragState = {
+        el: el,
+        startX: e.clientX,
+        startY: e.clientY,
+        origLeft: parseInt(el.style.left) || 0,
+        origTop: parseInt(el.style.top) || 0
+    };
+
+    el.classList.add('dragging');
+    document.addEventListener('mousemove', onCanvasMouseMove);
+    document.addEventListener('mouseup', onCanvasMouseUp);
+}
+
+function getAlignEdges(dragId) {
+    let edges = {h: new Set(), v: new Set()};
+    let canvas = document.getElementById('layout-canvas');
+    canvas.querySelectorAll('.layout-table-wrapper').forEach(el => {
+        if (el.getAttribute('data-id') === dragId) return;
+        let l = parseInt(el.style.left) || 0;
+        let t = parseInt(el.style.top) || 0;
+        let r = l + el.offsetWidth;
+        let b = t + el.offsetHeight;
+        edges.v.add(l);
+        edges.v.add(r);
+        edges.h.add(t);
+        edges.h.add(b);
+    });
+    return {h: [...edges.h], v: [...edges.v]};
+}
+
+function showGuides(canvas, matchedH, matchedV) {
+    clearGuides(canvas);
+    matchedH.forEach(y => {
+        let line = document.createElement('div');
+        line.className = 'guide-line guide-line-h';
+        line.style.top = y + 'px';
+        canvas.appendChild(line);
+    });
+    matchedV.forEach(x => {
+        let line = document.createElement('div');
+        line.className = 'guide-line guide-line-v';
+        line.style.left = x + 'px';
+        canvas.appendChild(line);
+    });
+}
+
+function clearGuides(canvas) {
+    canvas.querySelectorAll('.guide-line').forEach(el => el.remove());
+}
+
+const SNAP_PX = 5;
+const GRID_X = 5;
+const GRID_Y = 9;
+
+function snapToGrid(val, step) {
+    return Math.round(val / step) * step;
+}
+
+function onCanvasMouseMove(e) {
+    if (!dragState) return;
+    let dx = e.clientX - dragState.startX;
+    let dy = e.clientY - dragState.startY;
+    let newX = Math.max(0, snapToGrid(dragState.origLeft + dx, GRID_X));
+    let newY = Math.max(0, snapToGrid(dragState.origTop + dy, GRID_Y));
+
+    let canvas = document.getElementById('layout-canvas');
+    let elW = dragState.el.offsetWidth;
+    let elH = dragState.el.offsetHeight;
+
+    let dragLeft = newX, dragRight = newX + elW;
+    let dragTop = newY, dragBottom = newY + elH;
+
+    if (!dragState.edges) {
+        dragState.edges = getAlignEdges(dragState.el.getAttribute('data-id'));
+    }
+
+    let matchedH = [], matchedV = [];
+
+    for (let hy of dragState.edges.h) {
+        if (Math.abs(dragTop - hy) <= SNAP_PX) { newY = hy; matchedH.push(hy); break; }
+        if (Math.abs(dragBottom - hy) <= SNAP_PX) { newY = hy - elH; matchedH.push(hy); break; }
+    }
+    for (let vx of dragState.edges.v) {
+        if (Math.abs(dragLeft - vx) <= SNAP_PX) { newX = vx; matchedV.push(vx); break; }
+        if (Math.abs(dragRight - vx) <= SNAP_PX) { newX = vx - elW; matchedV.push(vx); break; }
+    }
+
+    newX = Math.max(0, newX);
+    newY = Math.max(0, newY);
+    dragState.el.style.left = newX + 'px';
+    dragState.el.style.top = newY + 'px';
+
+    showGuides(canvas, matchedH, matchedV);
+
+    let neededW = newX + elW + 20;
+    let neededH = newY + elH + 20;
+    if (neededW > parseInt(canvas.style.width)) canvas.style.width = neededW + 'px';
+    if (neededH > parseInt(canvas.style.height)) canvas.style.height = neededH + 'px';
+}
+
+function onCanvasMouseUp(e) {
+    if (!dragState) return;
+    let el = dragState.el;
+    el.classList.remove('dragging');
+
+    let canvas = document.getElementById('layout-canvas');
+    clearGuides(canvas);
+
+    let id = el.getAttribute('data-id');
+    let newX = parseInt(el.style.left) || 0;
+    let newY = parseInt(el.style.top) || 0;
+    let item = currentLayout.layout.find(i => i.id === id);
+    if (item) {
+        item.x = newX;
+        item.y = newY;
+    }
+
+    document.removeEventListener('mousemove', onCanvasMouseMove);
+    document.removeEventListener('mouseup', onCanvasMouseUp);
+    dragState = null;
+}
+
+function removeFromLayout(tableId) {
+    currentLayout.layout = currentLayout.layout.filter(item => item.id !== tableId);
+    renderCanvas();
+}
+
+function applySettings() {
+    // Update settings from inputs
+    currentLayout.settings.row_gap = parseInt(document.getElementById('setting-row-gap').value) || 4;
+    currentLayout.settings.default_table_gap = parseInt(document.getElementById('setting-default-gap').value) || 4;
+    currentLayout.settings.font_size = parseInt(document.getElementById('setting-font-size').value) || 11;
+
+    // Re-render all tables with new font size, then re-layout with gaps
+    let password = getSetupPassword();
+    let fontSize = currentLayout.settings.font_size;
+    let tableIds = Object.keys(currentLayout.tables);
+    let pending = tableIds.length;
+    if (pending === 0) return;
+
+    tableIds.forEach(id => {
+        fetch('/setup/render_table?token=' + TOKEN, {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({password: password, table_id: id, table_def: currentLayout.tables[id], font_size: fontSize})
+        })
+        .then(r => r.json())
+        .then(result => {
+            if (result.status === 'ok') renderedTables[id] = result.html;
+            pending--;
+            if (pending === 0) {
+                repositionTables();
+                renderCanvas();
+                autoSaveLayout();
+            }
+        })
+        .catch(() => { pending--; if (pending === 0) { repositionTables(); renderCanvas(); } });
+    });
+}
+
+function repositionTables() {
+    let items = currentLayout.layout;
+    if (!items || !items.length) return;
+    let rowGap = currentLayout.settings.row_gap || 4;
+    let tableGap = currentLayout.settings.default_table_gap || 4;
+
+    // Group by y-proximity (30px threshold) to detect rows
+    let sorted = items.slice().sort((a, b) => (a.y || 0) - (b.y || 0) || (a.x || 0) - (b.x || 0));
+    let clusters = [[sorted[0]]];
+    for (let i = 1; i < sorted.length; i++) {
+        let y = sorted[i].y || 0;
+        let prevY = clusters[clusters.length - 1][0].y || 0;
+        if (Math.abs(y - prevY) <= 30) {
+            clusters[clusters.length - 1].push(sorted[i]);
+        } else {
+            clusters.push([sorted[i]]);
+        }
+    }
+
+    // Re-position each cluster using gaps
+    let currentY = 0;
+    clusters.forEach(cluster => {
+        cluster.sort((a, b) => (a.x || 0) - (b.x || 0));
+        let currentX = 0;
+        let maxH = 0;
+        cluster.forEach(item => {
+            item.x = currentX;
+            item.y = currentY;
+            let w = getTablePixelWidth(item.id);
+            let h = getTablePixelHeight(item.id);
+            currentX += w + tableGap;
+            maxH = Math.max(maxH, h);
+        });
+        currentY += maxH + rowGap;
+    });
+}
+
+function addToLayout() {
+    let select = document.getElementById('add-table-select');
+    let tableId = select.value;
+    if (!tableId) return;
+    if (currentLayout.layout.some(item => item.id === tableId)) {
+        alert('Table already in layout');
+        return;
+    }
+    let maxY = 0;
+    currentLayout.layout.forEach(item => {
+        let y = (item.y || 0) + getTablePixelHeight(item.id);
+        maxY = Math.max(maxY, y);
+    });
+    currentLayout.layout.push({id: tableId, x: 0, y: maxY + 8});
+    renderCanvas();
+}
+
+function updateAddTableSelect() {
+    let select = document.getElementById('add-table-select');
+    if (!select) return;
+    let html = '';
+    for (let id in currentLayout.tables) {
+        html += '<option value="' + id + '">' + currentLayout.tables[id].name + ' (' + id + ')</option>';
+    }
+    select.innerHTML = html;
+}
+
+// ==================== Save / Preview ====================
+
+function gatherLayout() {
+    currentLayout.settings.row_gap = parseInt(document.getElementById('setting-row-gap').value) || 4;
+    currentLayout.settings.default_table_gap = parseInt(document.getElementById('setting-default-gap').value) || 4;
+    currentLayout.settings.font_size = parseInt(document.getElementById('setting-font-size').value) || 11;
+    currentLayout.settings.table_order = tableOrder;
+    return currentLayout;
+}
+
+function saveLayout() {
+    let layout = gatherLayout();
+    let password = getSetupPassword();
+    let reportType = document.getElementById('report-type').value;
+    fetch('/setup/save?token=' + TOKEN, {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({password: password, report_type: reportType, layout: layout})
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.status === 'ok') alert('Layout saved!');
+        else alert('Save failed: ' + result.message);
+    });
+}
+
+// ==================== Init ====================
+
+window.addEventListener('DOMContentLoaded', () => {
+    // Restore saved password into the field (hidden, just for display)
+    let savedPw = getSetupPassword();
+    if (savedPw) {
+        document.getElementById('setup-password').value = savedPw;
+    }
+
+    loadData('daily_pnl', 'dna');
+    loadData('daily_pnl', 'live');
+    loadData('daily_pnl', 'hist');
+});
+</script>
+{% endblock %}

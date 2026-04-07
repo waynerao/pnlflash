@@ -1,0 +1,9 @@
+[project]
+name = "pnlflash"
+version = "0.1.0"
+description = "PnL Flash - Financial reporting engine with Flask Web UI"
+requires-python = ">=3.12"
+dependencies = [
+    "flask>=3.1",
+    "pandas>=2.2",
+]

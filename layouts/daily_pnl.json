@@ -1,0 +1,490 @@
+{
+    "layout": [
+        {
+            "h": 2,
+            "id": "systematic_cash_trading_pnl",
+            "w": 3,
+            "x": 10,
+            "y": 10
+        },
+        {
+            "h": 2,
+            "id": "portfolio_metrics",
+            "w": 5,
+            "x": 310,
+            "y": 10
+        },
+        {
+            "h": 3,
+            "id": "apcr_factor_risk",
+            "w": 2,
+            "x": 836,
+            "y": 10
+        },
+        {
+            "h": 3,
+            "id": "apcr_spec_risk",
+            "w": 2,
+            "x": 1035,
+            "y": 10
+        },
+        {
+            "h": 2,
+            "id": "apcr_net_platform_value",
+            "w": 3,
+            "x": 10,
+            "y": 126
+        },
+        {
+            "h": 2,
+            "id": "cr_paa_by_strategy",
+            "w": 3,
+            "x": 310,
+            "y": 126
+        },
+        {
+            "h": 3,
+            "id": "paa_by_region",
+            "w": 2,
+            "x": 584,
+            "y": 126
+        },
+        {
+            "h": 3,
+            "id": "jpcr_factor_risk",
+            "w": 2,
+            "x": 836,
+            "y": 225
+        },
+        {
+            "h": 3,
+            "id": "jpcr_spec_risk",
+            "w": 2,
+            "x": 1035,
+            "y": 225
+        },
+        {
+            "h": 2,
+            "id": "jpcr_net_platform_value",
+            "w": 3,
+            "x": 10,
+            "y": 297
+        },
+        {
+            "h": 2,
+            "id": "cr_flow_paa_by_source_desk",
+            "w": 3,
+            "x": 310,
+            "y": 297
+        },
+        {
+            "h": 2,
+            "id": "sl_flow",
+            "w": 2,
+            "x": 584,
+            "y": 297
+        },
+        {
+            "h": 2,
+            "id": "apcr_flow",
+            "w": 3,
+            "x": 10,
+            "y": 468
+        },
+        {
+            "h": 4,
+            "id": "sl_top10_pnl_positions",
+            "w": 3,
+            "x": 584,
+            "y": 442
+        },
+        {
+            "h": 3,
+            "id": "sl_factor_risk",
+            "w": 2,
+            "x": 836,
+            "y": 442
+        },
+        {
+            "h": 3,
+            "id": "sl_spec_risk",
+            "w": 2,
+            "x": 1035,
+            "y": 442
+        },
+        {
+            "h": 2,
+            "id": "jpcr_flow",
+            "w": 3,
+            "x": 10,
+            "y": 567
+        }
+    ],
+    "settings": {
+        "default_table_gap": 4,
+        "row_gap": 4,
+        "table_order": [
+            "systematic_cash_trading_pnl",
+            "portfolio_metrics",
+            "apcr_net_platform_value",
+            "jpcr_net_platform_value",
+            "apcr_flow",
+            "jpcr_flow",
+            "sl_flow",
+            "paa_by_region",
+            "cr_paa_by_strategy",
+            "cr_flow_paa_by_source_desk",
+            "apcr_factor_risk",
+            "apcr_spec_risk",
+            "jpcr_factor_risk",
+            "jpcr_spec_risk",
+            "sl_factor_risk",
+            "sl_spec_risk",
+            "sl_top10_pnl_positions"
+        ],
+        "font_size": 11
+    },
+    "tables": {
+        "apcr_factor_risk": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                50,
+                50
+            ],
+            "display_rows": 10,
+            "function": "get_book_factor_risk",
+            "name": "APCR Factor Risk",
+            "params": {
+                "book": "APCR",
+                "report_type": "daily_pnl"
+            }
+        },
+        "apcr_flow": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                50,
+                65,
+                65,
+                55
+            ],
+            "display_rows": 3,
+            "function": "get_book_flow",
+            "name": "APCR Flow",
+            "params": {
+                "book": "APCR",
+                "report_type": "daily_pnl"
+            }
+        },
+        "apcr_net_platform_value": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                120,
+                55,
+                55,
+                55
+            ],
+            "display_rows": 7,
+            "function": "get_book_net_platform_value",
+            "name": "APCR Net Platform Value",
+            "params": {
+                "book": "APCR",
+                "report_type": "daily_pnl"
+            }
+        },
+        "apcr_spec_risk": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                50,
+                50
+            ],
+            "display_rows": 10,
+            "function": "get_book_spec_risk",
+            "name": "APCR Spec Risk",
+            "params": {
+                "book": "APCR",
+                "report_type": "daily_pnl"
+            }
+        },
+        "cr_flow_paa_by_source_desk": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                100,
+                55,
+                55,
+                55
+            ],
+            "display_rows": 12,
+            "function": "get_cr_flow_paa_by_source_desk",
+            "name": "CR Flow & PAA By Source and Desk",
+            "params": {
+                "report_type": "daily_pnl"
+            }
+        },
+        "cr_paa_by_strategy": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                100,
+                55,
+                55,
+                55
+            ],
+            "display_rows": 6,
+            "function": "get_cr_paa_by_strategy",
+            "name": "CR PAA By Strategy",
+            "params": {
+                "report_type": "daily_pnl"
+            }
+        },
+        "jpcr_factor_risk": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                50,
+                50
+            ],
+            "display_rows": 10,
+            "function": "get_book_factor_risk",
+            "name": "JPCR Factor Risk",
+            "params": {
+                "book": "JPCR",
+                "report_type": "daily_pnl"
+            }
+        },
+        "jpcr_flow": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                50,
+                65,
+                65,
+                55
+            ],
+            "display_rows": 3,
+            "function": "get_book_flow",
+            "name": "JPCR Flow",
+            "params": {
+                "book": "JPCR",
+                "report_type": "daily_pnl"
+            }
+        },
+        "jpcr_net_platform_value": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                120,
+                55,
+                55,
+                55
+            ],
+            "display_rows": 7,
+            "function": "get_book_net_platform_value",
+            "name": "JPCR Net Platform Value",
+            "params": {
+                "book": "JPCR",
+                "report_type": "daily_pnl"
+            }
+        },
+        "jpcr_spec_risk": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                50,
+                50
+            ],
+            "display_rows": 10,
+            "function": "get_book_spec_risk",
+            "name": "JPCR Spec Risk",
+            "params": {
+                "book": "JPCR",
+                "report_type": "daily_pnl"
+            }
+        },
+        "paa_by_region": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                60,
+                55,
+                55,
+                55
+            ],
+            "display_rows": 6,
+            "function": "get_paa_by_region",
+            "name": "PAA By Region",
+            "params": {
+                "report_type": "daily_pnl"
+            }
+        },
+        "portfolio_metrics": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                65,
+                65,
+                65,
+                65
+            ],
+            "display_rows": 4,
+            "function": "get_portfolio_metrics",
+            "name": "Portfolio Metrics",
+            "params": {
+                "report_type": "daily_pnl"
+            }
+        },
+        "sl_factor_risk": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                50,
+                50
+            ],
+            "display_rows": 10,
+            "function": "get_book_factor_risk",
+            "name": "SL Factor Risk",
+            "params": {
+                "book": "SL",
+                "report_type": "daily_pnl"
+            }
+        },
+        "sl_flow": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                50,
+                65,
+                65,
+                55
+            ],
+            "display_rows": 4,
+            "function": "get_book_flow",
+            "name": "SL Flow",
+            "params": {
+                "book": "SL",
+                "report_type": "daily_pnl"
+            }
+        },
+        "sl_spec_risk": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                80,
+                50,
+                50
+            ],
+            "display_rows": 10,
+            "function": "get_book_spec_risk",
+            "name": "SL Spec Risk",
+            "params": {
+                "book": "SL",
+                "report_type": "daily_pnl"
+            }
+        },
+        "sl_top10_pnl_positions": {
+            "col_formats": [
+                "raw",
+                "raw",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                55,
+                55,
+                55,
+                55
+            ],
+            "display_rows": 10,
+            "function": "get_sl_top10_pnl_positions",
+            "name": "SL Top 10 P&L & Positions",
+            "params": {
+                "report_type": "daily_pnl"
+            }
+        },
+        "systematic_cash_trading_pnl": {
+            "col_formats": [
+                "raw",
+                "K",
+                "K",
+                "K"
+            ],
+            "col_widths": [
+                120,
+                55,
+                55,
+                55
+            ],
+            "display_rows": 4,
+            "function": "get_systematic_cash_trading_pnl",
+            "name": "Systematic Cash Trading PnL",
+            "params": {
+                "report_type": "daily_pnl"
+            }
+        }
+    }
+}

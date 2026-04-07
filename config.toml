@@ -1,0 +1,39 @@
+[app]
+host = "0.0.0.0"
+port = 5000
+
+[tokens]
+user1 = "abc123"
+user2 = "def456"
+
+[schedule]
+s3_reload_after = "08:30"
+realtime_reload_after = "07:00"
+
+[email]
+smtp_host = "smtp.internal.com"
+smtp_port = 25
+from_address = "pnlflash@internal.com"
+
+[email.subjects]
+daily_pnl = "Systematic Cash Trading PnL"
+monthly_paa = "Monthly PAA Report"
+weekly_paa = "Weekly PAA Report"
+
+[email.recipients.daily_pnl]
+to = ["team@internal.com"]
+cc = ["manager@internal.com"]
+
+[email.recipients.monthly_paa]
+to = ["team@internal.com"]
+cc = ["manager@internal.com"]
+
+[email.recipients.weekly_paa]
+to = ["team@internal.com"]
+cc = ["manager@internal.com"]
+
+[setup]
+password = "admin123"
+
+[output]
+portfolio_metrics_path = "output/portfolio_metrics"

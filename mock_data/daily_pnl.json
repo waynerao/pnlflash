@@ -1,0 +1,167 @@
+{
+    "systematic_cash_trading_pnl": {
+        "headers": ["", "TD", "MTD", "YTD"],
+        "rows": [
+            ["APCR Trading", 120, -450, 1350],
+            ["JPCR Trading", -80, 230, -890],
+            ["SL Trading", 45, 180, 2100],
+            ["Total", 85, -40, 2560]
+        ]
+    },
+    "portfolio_metrics": {
+        "headers": ["Metric", "APCR", "JPCR", "SL", "Total"],
+        "rows": [
+            ["Gross Exposure", 850000, 420000, 310000, 1580000],
+            ["Net Exposure", 125000, -68000, 45000, 102000],
+            ["Factor Risk", 3200, 1800, 950, 5950],
+            ["Spec Risk", 1500, 890, 620, 3010],
+            ["Total Risk", 4700, 2690, 1570, 8960],
+            ["Turnover", 230000, 180000, 95000, 505000]
+        ]
+    },
+    "paa_by_region": {
+        "headers": ["Region", "TD", "MTD", "YTD"],
+        "rows": [
+            ["HK", 65, -180, 890],
+            ["SG", 12, 45, 320],
+            ["CN", 43, -120, 450],
+            ["JP", -80, 230, -890],
+            ["AU", 30, 85, 1200],
+            ["Total", 70, 60, 1970]
+        ]
+    },
+    "apcr_flow": {
+        "headers": ["", "Trading Flow", "Closing Flow", "Net Flow"],
+        "rows": [
+            ["HK", 125000, -98000, 27000],
+            ["SG", 45000, -32000, 13000],
+            ["CN", 88000, -75000, 13000],
+            ["Total", 258000, -205000, 53000]
+        ]
+    },
+    "jpcr_flow": {
+        "headers": ["", "Trading Flow", "Closing Flow", "Net Flow"],
+        "rows": [
+            ["JP", 180000, -165000, 15000],
+            ["Total", 180000, -165000, 15000]
+        ]
+    },
+    "sl_flow": {
+        "headers": ["", "Trading Flow", "Closing Flow", "Net Flow"],
+        "rows": [
+            ["HK", 52000, -48000, 4000],
+            ["SG", 18000, -15000, 3000],
+            ["AU", 35000, -30000, 5000],
+            ["Total", 105000, -93000, 12000]
+        ]
+    },
+    "apcr_factor_risk": {
+        "headers": ["Factor", "Gross", "Risk"],
+        "rows": [
+            ["Market", 450, 320],
+            ["Size", 120, 85],
+            ["Value", 95, 68],
+            ["Momentum", 180, 130],
+            ["Total", 845, 603]
+        ]
+    },
+    "jpcr_factor_risk": {
+        "headers": ["Factor", "Gross", "Risk"],
+        "rows": [
+            ["Market", 280, 195],
+            ["Size", 75, 52],
+            ["Value", 60, 42],
+            ["Momentum", 110, 78],
+            ["Total", 525, 367]
+        ]
+    },
+    "sl_factor_risk": {
+        "headers": ["Factor", "Gross", "Risk"],
+        "rows": [
+            ["Market", 180, 125],
+            ["Size", 48, 33],
+            ["Value", 38, 27],
+            ["Momentum", 72, 50],
+            ["Total", 338, 235]
+        ]
+    },
+    "apcr_spec_risk": {
+        "headers": ["", "Gross", "Risk"],
+        "rows": [
+            ["Single Stock", 890, 620],
+            ["ETF", 210, 145],
+            ["Total", 1100, 765]
+        ]
+    },
+    "jpcr_spec_risk": {
+        "headers": ["", "Gross", "Risk"],
+        "rows": [
+            ["Single Stock", 520, 365],
+            ["ETF", 130, 90],
+            ["Total", 650, 455]
+        ]
+    },
+    "sl_spec_risk": {
+        "headers": ["", "Gross", "Risk"],
+        "rows": [
+            ["Single Stock", 340, 238],
+            ["ETF", 85, 59],
+            ["Total", 425, 297]
+        ]
+    },
+    "apcr_net_platform_value": {
+        "headers": ["", "TD", "MTD"],
+        "rows": [
+            ["Trading Flow", 258, 1850],
+            ["Closing Flow", -205, -1520],
+            ["Follow on Commission", 3, 18],
+            ["EIC Trading External", 1, 6],
+            ["Net Platform Value", 57, 354]
+        ]
+    },
+    "jpcr_net_platform_value": {
+        "headers": ["", "TD", "MTD"],
+        "rows": [
+            ["Trading Flow", 180, 1320],
+            ["Closing Flow", -165, -1180],
+            ["Follow on Commission", 2, 12],
+            ["EIC Trading External", 1, 4],
+            ["Net Platform Value", 18, 156]
+        ]
+    },
+    "cr_paa_by_strategy": {
+        "headers": ["Strategy", "TD", "MTD", "YTD"],
+        "rows": [
+            ["Tracking Error", 25, -85, 320],
+            ["PBMM", 18, 42, 180],
+            ["IOI", -8, 15, 95],
+            ["CMatch", 5, -12, 45],
+            ["Total", 40, -40, 640]
+        ]
+    },
+    "cr_flow_paa_by_source_desk": {
+        "headers": ["Source / Desk", "Flow", "PAA TD", "PAA MTD"],
+        "rows": [
+            ["Agency", 125000, 15, -35],
+            ["Principal", 88000, 22, 48],
+            ["IOI", 45000, -8, 15],
+            ["Internal", 32000, 5, -12],
+            ["Total", 290000, 34, 16]
+        ]
+    },
+    "sl_top10_pnl_positions": {
+        "headers": ["Ticker", "Name", "Gross", "PnL TD", "PnL MTD"],
+        "rows": [
+            ["0700.HK", "Tencent", 25000, 12, 45],
+            ["9988.HK", "Alibaba", 18000, -8, 32],
+            ["3690.HK", "Meituan", 15000, 6, -18],
+            ["9618.HK", "JD.com", 12000, -3, 22],
+            ["1810.HK", "Xiaomi", 10000, 8, 15],
+            ["2318.HK", "Ping An", 9500, -5, -12],
+            ["0941.HK", "China Mobile", 8800, 4, 28],
+            ["1398.HK", "ICBC", 7500, 2, -8],
+            ["0005.HK", "HSBC", 7200, -6, 18],
+            ["2388.HK", "BOC HK", 6500, 3, -5]
+        ]
+    }
+}
