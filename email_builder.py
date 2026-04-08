@@ -5,7 +5,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from formatter import format_number, is_negative_display
-from data_functions import DATA_FUNCTIONS
+from data_functions import DATA_FUNCTIONS, clear_cache
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,29 @@ def grid_to_rows(layout_items, default_gap=4):
     return rows
 
 
-def build_email(report_type, loader, report_date, data_override=None, layout_override=None):
+def _grid_to_pixel_positions(layout_items, tables_def, default_gap, row_gap):
+    """Convert small-integer grid positions to pixel positions for preview rendering."""
+    rows = grid_to_rows(layout_items, default_gap)
+    positions = {}
+    current_y = 10
+    for row in rows:
+        current_x = 10
+        max_h = 0
+        for i, item in enumerate(row["tables"]):
+            tbl_id = item["id"]
+            positions[tbl_id] = (current_x, current_y)
+            tbl_def = tables_def.get(tbl_id, {})
+            tbl_w = sum(tbl_def.get("col_widths", [80]))
+            display_rows = tbl_def.get("display_rows", 3)
+            tbl_h = (display_rows + 2) * 18
+            current_x += tbl_w + item.get("gap", default_gap)
+            max_h = max(max_h, tbl_h)
+        current_y += max_h + row_gap
+    return positions
+
+
+def build_email(report_type, loader, start_date, end_date, data_override=None, layout_override=None):
+    clear_cache()
     layout_config = layout_override if layout_override else load_layout(report_type)
     tables_def = layout_config["tables"]
     raw_layout = layout_config["layout"]
@@ -86,7 +108,7 @@ def build_email(report_type, loader, report_date, data_override=None, layout_ove
             func_name = tbl_def["function"]
             func = DATA_FUNCTIONS.get(func_name)
             if func:
-                table_data[tbl_id] = func(loader, report_date, tbl_def.get("params", {}))
+                table_data[tbl_id] = func(loader, start_date, end_date, tbl_def.get("params", {}))
             else:
                 logger.warning(f"Data function not found: {func_name}")
                 table_data[tbl_id] = {"headers": [], "rows": []}
@@ -186,8 +208,9 @@ def render_single_table(table_id, table_def, table_data, font_size=11):
     return html
 
 
-def build_preview(report_type, loader, report_date, data_override=None):
+def build_preview(report_type, loader, start_date, end_date, data_override=None):
     """Build an absolute-positioned preview matching the canvas layout."""
+    clear_cache()
     layout_config = load_layout(report_type)
     tables_def = layout_config["tables"]
     layout_items = layout_config.get("layout", [])
@@ -203,36 +226,41 @@ def build_preview(report_type, loader, report_date, data_override=None):
             func_name = tbl_def["function"]
             func = DATA_FUNCTIONS.get(func_name)
             if func:
-                table_data = func(loader, report_date, tbl_def.get("params", {}))
+                table_data = func(loader, start_date, end_date, tbl_def.get("params", {}))
             else:
                 table_data = {"headers": [], "rows": []}
         rendered[tbl_id] = render_single_table(tbl_id, tbl_def, table_data, font_size)
 
+    default_gap = settings.get("default_table_gap", 4)
+    row_gap = settings.get("row_gap", 4)
+
+    # Detect if layout uses small grid integers (old format) vs pixel positions
+    max_y = max((item.get("y", 0) for item in layout_items), default=0) if layout_items else 0
+    if max_y <= 20:
+        # Convert grid layout to pixel positions using table dimensions
+        positions = _grid_to_pixel_positions(layout_items, tables_def, default_gap, row_gap)
+    else:
+        positions = {item["id"]: (item.get("x", 0), item.get("y", 0)) for item in layout_items}
+
     # Calculate bounding box for the container
     max_w = 0
     max_h = 0
-    for item in layout_items:
-        tbl_id = item.get("id")
+    for tbl_id, (x, y) in positions.items():
         if tbl_id not in tables_def:
             continue
-        x = item.get("x", 0)
-        y = item.get("y", 0)
         tbl_def = tables_def[tbl_id]
         col_widths = tbl_def.get("col_widths", [80])
         tbl_w = sum(col_widths)
         display_rows = tbl_def.get("display_rows", 3)
-        tbl_h = (display_rows + 2) * 18  # title + header + data rows
+        tbl_h = (display_rows + 2) * 18
         max_w = max(max_w, x + tbl_w + 20)
         max_h = max(max_h, y + tbl_h + 20)
 
     # Build absolute-positioned HTML with explicit container size
-    html = f'<div style="position:relative;width:{max_w}px;height:{max_h}px;font-family:Calibri,Arial,sans-serif;font-size:11px;color:#333;">'
-    for item in layout_items:
-        tbl_id = item.get("id")
+    html = f'<div style="position:relative;width:{max_w}px;height:{max_h}px;font-family:Calibri,Arial,sans-serif;font-size:{font_size}px;color:#333;">'
+    for tbl_id, (x, y) in positions.items():
         if tbl_id not in rendered:
             continue
-        x = item.get("x", 0)
-        y = item.get("y", 0)
         html += f'<div style="position:absolute;left:{x}px;top:{y}px;">{rendered[tbl_id]}</div>'
     html += '</div>'
     return html

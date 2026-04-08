@@ -283,8 +283,8 @@ pnlflash/
   - Header font = `max(font_size - 1, 8)`
 - [x] "Apply" button replaces "Auto Layout"
   - Re-renders all tables server-side with current `font_size`
-  - Repositions tables with current row_gap and table_gap
-  - Auto-saves layout after applying
+  - Keeps existing table positions (no repositioning)
+  - Saves gap/font settings to layout JSON
 - [x] Removed unused files and routes
   - Deleted `templates/setup.html`
   - Removed `/setup` page route
@@ -292,9 +292,29 @@ pnlflash/
   - Removed `static/style.css` `.email-preview-frame` class
   - Removed `EMAIL_SUBJECTS` and `EMAIL_RECIPIENTS` JS constants from dashboard
 
+## Phase 13: Data Functions & Date Range Refactor
+
+- [x] Removed `transpose_table()` from `data_functions.py` (no longer used)
+- [x] Added per-build data cache (`_get_data()` / `clear_cache()`)
+  - Caches `loader.load_dna_data()` by `(start_date, end_date, report_type)` key
+  - Multiple tables sharing the same dataset only trigger one loader call
+  - `clear_cache()` called at start of `build_email()` and `build_preview()`
+- [x] Replaced `report_date` with `start_date` / `end_date` across all layers
+  - JS `getDateRange(reportType)` computes weekday-bounded ranges from picker values
+  - Daily: start = end = selected date
+  - Monthly: first weekday of month → last weekday of month
+  - Weekly: Monday → Friday of selected week
+  - All dates are `YYYY-MM-DD` strings throughout
+  - Updated: data functions, `BaseLoader`, `MockLoader`, `email_builder`, `app.py` routes, dashboard JS
+- [x] Fixed PAA tab email preview (monthly/weekly layouts used small grid integers)
+  - Added `_grid_to_pixel_positions()` to convert grid layout to pixel positions for preview
+  - `build_preview()` auto-detects grid vs pixel format and converts accordingly
+- [x] Auto-load PAA tabs on page load (monthly/weekly DNA data loads alongside daily)
+- [x] Added fallback handling in `getDateRange()` for browsers that don't support `<input type="week">`
+
 ## Build Order
 
-Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7 → Phase 8 → Phase 9 → Phase 10 → Phase 11 → Phase 12
+Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7 → Phase 8 → Phase 9 → Phase 10 → Phase 11 → Phase 12 → Phase 13
 
 ## Key Decisions
 

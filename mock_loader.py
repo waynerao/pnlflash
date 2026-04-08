@@ -8,8 +8,9 @@ MOCK_DATA_DIR = Path(__file__).parent / "mock_data"
 
 class MockLoader(BaseLoader):
 
-    def load_dna_data(self, report_date, report_type):
+    def load_dna_data(self, start_date, end_date, report_type):
         # report_type: 'daily_pnl', 'monthly_paa', 'weekly_paa'
+        # start_date / end_date ignored for mock data
         file_path = MOCK_DATA_DIR / f"{report_type}.json"
         with open(file_path) as f:
             return json.load(f)

@@ -112,22 +112,23 @@ def dashboard(**kwargs):
 def load_data(**kwargs):
     report_type = request.args.get("report_type")
     source = request.args.get("source")
-    report_date = request.args.get("date", date.today().isoformat())
+    start_date = request.args.get("start_date", date.today().isoformat())
+    end_date = request.args.get("end_date", date.today().isoformat())
 
     if source == "dna":
-        data = loader.load_dna_data(report_date, report_type)
+        data = loader.load_dna_data(start_date, end_date, report_type)
         if report_type == "daily_pnl":
-            save_portfolio_metrics(data, report_date)
+            save_portfolio_metrics(data, start_date)
         return jsonify({"status": "ok", "data": data})
     elif source == "hist":
-        result = loader.load_hist_pnl(report_date)
+        result = loader.load_hist_pnl(start_date)
         _hist_pnl_cache["data"] = result
         _hist_pnl_cache["loaded_at"] = datetime.now().isoformat()
         latest_date = result.get("latest_date", "")
-        t1_available = _check_t1_available(report_date, latest_date)
+        t1_available = _check_t1_available(start_date, latest_date)
         return jsonify({"status": "ok", "latest_date": latest_date, "t1_available": t1_available, "pnl_data": result.get("pnl_by_book", {})})
     elif source == "live":
-        result = loader.load_live_pnl(report_date)
+        result = loader.load_live_pnl(start_date)
         return jsonify({"status": "ok", "data": result})
     return jsonify({"status": "error", "message": f"Unknown source: {source}"})
 
@@ -151,10 +152,11 @@ def _check_t1_available(report_date, latest_date):
 @validate_token
 def preview(**kwargs):
     report_type = request.args.get("report_type")
-    report_date = request.args.get("date", date.today().isoformat())
+    start_date = request.args.get("start_date", date.today().isoformat())
+    end_date = request.args.get("end_date", date.today().isoformat())
     body = request.get_json()
     data_override = body.get("data", {})
-    html = build_preview(report_type, loader, report_date, data_override if data_override else None)
+    html = build_preview(report_type, loader, start_date, end_date, data_override if data_override else None)
     return jsonify({"status": "ok", "html": html})
 
 
@@ -163,7 +165,8 @@ def preview(**kwargs):
 def send(**kwargs):
     body = request.get_json()
     report_type = body.get("report_type")
-    report_date = body.get("date", date.today().isoformat())
+    start_date = body.get("start_date", date.today().isoformat())
+    end_date = body.get("end_date", date.today().isoformat())
     subject = body.get("subject", "")
     to_str = body.get("to", "")
     cc_str = body.get("cc", "")
@@ -171,7 +174,7 @@ def send(**kwargs):
 
     to_list = [s.strip() for s in to_str.split(",") if s.strip()]
     cc_list = [s.strip() for s in cc_str.split(",") if s.strip()]
-    html = build_email(report_type, loader, report_date, data_override if data_override else None)
+    html = build_email(report_type, loader, start_date, end_date, data_override if data_override else None)
     file_path = send_email(html, subject, to_list, cc_list)
     logger.info(f"Email sent by {kwargs['user']}: {subject}")
     return jsonify({"status": "ok", "file_path": file_path})
@@ -201,7 +204,8 @@ def setup_load(**kwargs):
         table_data = {"headers": [], "rows": []}
         if func:
             try:
-                table_data = func(loader, date.today().isoformat(), tbl_def.get("params", {}))
+                today = date.today().isoformat()
+                table_data = func(loader, today, today, tbl_def.get("params", {}))
                 rows = len(table_data.get("rows", []))
             except Exception:
                 pass
@@ -230,7 +234,8 @@ def setup_render_table(**kwargs):
     table_data = {"headers": [], "rows": []}
     if func:
         try:
-            table_data = func(loader, date.today().isoformat(), tbl_def.get("params", {}))
+            today = date.today().isoformat()
+            table_data = func(loader, today, today, tbl_def.get("params", {}))
         except Exception:
             pass
     font_size = body.get("font_size", 11)

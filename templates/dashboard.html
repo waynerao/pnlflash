@@ -339,13 +339,61 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 // ==================== Dashboard Data Loading ====================
 
-function loadData(reportType, source) {
-    let dateVal;
-    if (reportType === 'daily_pnl') dateVal = document.getElementById('daily-date').value;
-    else if (reportType === 'monthly_paa') dateVal = document.getElementById('monthly-date').value;
-    else dateVal = document.getElementById('weekly-date').value;
+function getDateRange(reportType) {
+    // Returns {start_date, end_date} as YYYY-MM-DD strings
+    // Daily: start = end = selected date
+    // Monthly: first weekday to last weekday of the month
+    // Weekly: Monday to Friday of the selected week
+    let today = new Date();
+    if (reportType === 'daily_pnl') {
+        let d = document.getElementById('daily-date').value || fmtDate(today);
+        return {start_date: d, end_date: d};
+    }
+    if (reportType === 'monthly_paa') {
+        let mv = document.getElementById('monthly-date').value; // "2026-04" or fallback
+        let y, m;
+        if (mv && mv.includes('-')) {
+            [y, m] = mv.split('-').map(Number);
+        } else {
+            y = today.getFullYear(); m = today.getMonth() + 1;
+        }
+        let first = new Date(y, m - 1, 1);
+        while (first.getDay() === 0 || first.getDay() === 6) first.setDate(first.getDate() + 1);
+        let last = new Date(y, m, 0); // last day of month
+        while (last.getDay() === 0 || last.getDay() === 6) last.setDate(last.getDate() - 1);
+        return {start_date: fmtDate(first), end_date: fmtDate(last)};
+    }
+    // weekly_paa
+    let wv = document.getElementById('weekly-date').value; // "2026-W15" or may be empty
+    let mon;
+    if (wv && wv.includes('-W')) {
+        let [wy, ww] = wv.split('-W').map(Number);
+        let jan4 = new Date(wy, 0, 4);
+        let dayOfWeek = jan4.getDay() || 7;
+        mon = new Date(jan4);
+        mon.setDate(jan4.getDate() - dayOfWeek + 1 + (ww - 1) * 7);
+    } else {
+        // Fallback: current week's Monday
+        mon = new Date(today);
+        let dow = mon.getDay() || 7;
+        mon.setDate(mon.getDate() - dow + 1);
+    }
+    let fri = new Date(mon);
+    fri.setDate(mon.getDate() + 4);
+    return {start_date: fmtDate(mon), end_date: fmtDate(fri)};
+}
 
-    fetch(`/load?token=${TOKEN}&report_type=${reportType}&source=${source}&date=${dateVal}`)
+function fmtDate(d) {
+    let y = d.getFullYear();
+    let m = String(d.getMonth() + 1).padStart(2, '0');
+    let day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function loadData(reportType, source) {
+    let range = getDateRange(reportType);
+
+    fetch(`/load?token=${TOKEN}&report_type=${reportType}&source=${source}&start_date=${range.start_date}&end_date=${range.end_date}`)
         .then(r => r.json())
         .then(result => {
             if (result.status === 'ok') {
@@ -488,18 +536,14 @@ function resetEdits(reportType) {
 function openSendModal(reportType) {
     currentSendTab = reportType;
     let cfg = EMAIL_CONFIG[reportType];
-    let dateVal;
-    if (reportType === 'daily_pnl') dateVal = document.getElementById('daily-date').value;
-    else if (reportType === 'monthly_paa') dateVal = document.getElementById('monthly-date').value;
-    else dateVal = document.getElementById('weekly-date').value;
-    let dateStr = dateVal.replace(/-/g, '').substring(0, 8);
-    if (dateStr.length < 8) dateStr = dateVal.replace(/-/g, '').replace('W', '') + '01';
+    let range = getDateRange(reportType);
+    let dateStr = range.end_date.replace(/-/g, '');
 
     document.getElementById('modal-subject').value = cfg.subject + ' ' + dateStr;
     document.getElementById('modal-to').value = cfg.to.join(', ');
     document.getElementById('modal-cc').value = cfg.cc.join(', ');
 
-    fetch(`/preview?token=${TOKEN}&report_type=${reportType}&date=${dateVal}`, {
+    fetch(`/preview?token=${TOKEN}&report_type=${reportType}&start_date=${range.start_date}&end_date=${range.end_date}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({data: dataStore[reportType]})
@@ -520,16 +564,13 @@ function confirmSend() {
     let subject = document.getElementById('modal-subject').value;
     let toList = document.getElementById('modal-to').value;
     let ccList = document.getElementById('modal-cc').value;
-    let dateVal;
-    if (currentSendTab === 'daily_pnl') dateVal = document.getElementById('daily-date').value;
-    else if (currentSendTab === 'monthly_paa') dateVal = document.getElementById('monthly-date').value;
-    else dateVal = document.getElementById('weekly-date').value;
+    let range = getDateRange(currentSendTab);
 
     fetch(`/send?token=${TOKEN}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-            report_type: currentSendTab, date: dateVal,
+            report_type: currentSendTab, start_date: range.start_date, end_date: range.end_date,
             subject: subject, to: toList, cc: ccList,
             data: dataStore[currentSendTab]
         })
@@ -1088,12 +1129,11 @@ function applySettings() {
             if (result.status === 'ok') renderedTables[id] = result.html;
             pending--;
             if (pending === 0) {
-                repositionTables();
                 renderCanvas();
                 autoSaveLayout();
             }
         })
-        .catch(() => { pending--; if (pending === 0) { repositionTables(); renderCanvas(); } });
+        .catch(() => { pending--; if (pending === 0) { renderCanvas(); } });
     });
 }
 
@@ -1198,6 +1238,8 @@ window.addEventListener('DOMContentLoaded', () => {
     loadData('daily_pnl', 'dna');
     loadData('daily_pnl', 'live');
     loadData('daily_pnl', 'hist');
+    loadData('monthly_paa', 'dna');
+    loadData('weekly_paa', 'dna');
 });
 </script>
 {% endblock %}

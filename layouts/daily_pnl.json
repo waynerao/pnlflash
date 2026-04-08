@@ -68,7 +68,7 @@
             "id": "jpcr_net_platform_value",
             "w": 3,
             "x": 10,
-            "y": 297
+            "y": 288
         },
         {
             "h": 2,
@@ -89,7 +89,7 @@
             "id": "apcr_flow",
             "w": 3,
             "x": 10,
-            "y": 468
+            "y": 450
         },
         {
             "h": 4,
@@ -117,11 +117,12 @@
             "id": "jpcr_flow",
             "w": 3,
             "x": 10,
-            "y": 567
+            "y": 554
         }
     ],
     "settings": {
         "default_table_gap": 4,
+        "font_size": 11,
         "row_gap": 4,
         "table_order": [
             "systematic_cash_trading_pnl",
@@ -141,8 +142,7 @@
             "sl_factor_risk",
             "sl_spec_risk",
             "sl_top10_pnl_positions"
-        ],
-        "font_size": 11
+        ]
     },
     "tables": {
         "apcr_factor_risk": {

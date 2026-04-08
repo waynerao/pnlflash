@@ -129,7 +129,7 @@ Three independent data sources:
 
 #### Auto-Load Behavior
 
-- All data sources load automatically on initial page load.
+- All tabs auto-load DNA data on initial page load (Daily PnL also loads Live PnL and Hist PnL).
 - Two configurable timestamps in TOML trigger an automatic **second reload** after the configured time:
   - `s3_reload_after` — auto-reload S3 Hist PnL after this time
   - `realtime_reload_after` — auto-reload Live PnL after this time
@@ -295,7 +295,12 @@ Global layout settings:
 #### Data Functions
 
 - Data functions are registered in `data_functions.py` and referenced by name in layout config.
-- Each function takes `(loader, date, params)` and returns `{"headers": [...], "rows": [[...]]}`.
+- Each function takes `(loader, start_date, end_date, params)` and returns `{"headers": [...], "rows": [[...]]}`.
+- All dates are `YYYY-MM-DD` strings:
+  - Daily: `start_date == end_date == selected date`
+  - Monthly: `start_date = first weekday of month`, `end_date = last weekday of month`
+  - Weekly: `start_date = Monday`, `end_date = Friday`
+- Per-build cache (`_get_data()`) ensures `loader.load_dna_data()` is called once per `(start_date, end_date, report_type)`, shared across all tables in the same build cycle.
 - Column formats and widths must match the output shape of the data function.
 
 #### Layout Example (Daily PnL — Graph 1)
