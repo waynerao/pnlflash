@@ -312,9 +312,18 @@ pnlflash/
 - [x] Auto-load PAA tabs on page load (monthly/weekly DNA data loads alongside daily)
 - [x] Added fallback handling in `getDateRange()` for browsers that don't support `<input type="week">`
 
+## Phase 14: Unified Email Rendering
+
+- [x] Email body now uses absolute-positioned layout matching the canvas/preview
+  - Extracted `_render_layout_body()` helper as single source of truth
+  - `build_email()` wraps it in `<!DOCTYPE><html><body>`; `build_preview()` returns it directly
+  - Editor/preview/sent email all render identically
+  - Note: `position:absolute` has limited support in Outlook Desktop (Word renderer); test before relying on Outlook
+- [x] `email_generic.html` template is now unused (kept for reference, can be deleted)
+
 ## Build Order
 
-Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7 → Phase 8 → Phase 9 → Phase 10 → Phase 11 → Phase 12 → Phase 13
+Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7 → Phase 8 → Phase 9 → Phase 10 → Phase 11 → Phase 12 → Phase 13 → Phase 14
 
 ## Key Decisions
 

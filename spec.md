@@ -93,14 +93,17 @@ Vertical attribution blocks per book. Columns: Month name / Year-to-Date.
 
 Same structure as Monthly PAA (4B) but with weekly date ranges instead of monthly.
 
-## 5. Email Engineering (Outlook-First)
+## 5. Email Engineering
 
-- **Compatibility**: Strict `<table>`-based layouts only. Outlook Desktop uses the Word rendering engine — no Flexbox, no CSS Grid.
-- **Styling**: All CSS must be inlined.
+- **Layout**: Email body uses absolute-positioned `<div>` containers (`position:absolute`) wrapping inlined `<table>` blocks. This makes the sent email match the canvas/preview pixel-for-pixel.
+- **Single source of truth**: `_render_layout_body()` in `email_builder.py` is shared by both `build_email()` (wraps in full HTML doc) and `build_preview()` (returns body fragment).
+- **Outlook caveat**: Outlook Desktop (Word rendering engine) has limited support for `position:absolute`. Webmail and most modern clients render correctly. If Outlook compatibility becomes a hard requirement, a separate row-based fallback path can be re-introduced.
+- **Styling**: All CSS inlined.
 - **Visual Design**:
   - Blue headers (`#4a7ebb`)
   - Alternating row colors for readability
   - Red text for negative values, displayed in parentheses (e.g., `(10K)`)
+  - Black borders on left/right of each table, black bottom border on last data row
   - Compact, professional "financial terminal" aesthetic
 - **Number Formatting**: K suffix for thousands, mm suffix for millions, parentheses for negatives
 

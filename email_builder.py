@@ -87,37 +87,71 @@ def _grid_to_pixel_positions(layout_items, tables_def, default_gap, row_gap):
 
 
 def build_email(report_type, loader, start_date, end_date, data_override=None, layout_override=None):
+    """Build the full email HTML document. Body uses the same absolute-positioned
+    layout as the canvas/preview so what users see in the editor matches what they send."""
+    body = _render_layout_body(report_type, loader, start_date, end_date,
+                               data_override=data_override, layout_override=layout_override)
+    return (
+        '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
+        '<body style="margin:0;padding:0;">' + body + '</body></html>'
+    )
+
+
+def _render_layout_body(report_type, loader, start_date, end_date,
+                        data_override=None, layout_override=None):
+    """Render the absolute-positioned tables layout (no <html>/<body> wrapper)."""
     clear_cache()
     layout_config = layout_override if layout_override else load_layout(report_type)
     tables_def = layout_config["tables"]
-    raw_layout = layout_config["layout"]
+    layout_items = layout_config.get("layout", [])
     settings = layout_config.get("settings", {})
-    row_gap = settings.get("row_gap", 4)
-    default_gap = settings.get("default_table_gap", 4)
     font_size = settings.get("font_size", 11)
+    default_gap = settings.get("default_table_gap", 4)
+    row_gap = settings.get("row_gap", 4)
 
-    # Convert grid layout to rows for email rendering
-    layout_rows = grid_to_rows(raw_layout, default_gap)
-
-    # Gather table data
-    table_data = {}
+    # Gather table data and render each table
+    rendered = {}
     for tbl_id, tbl_def in tables_def.items():
         if data_override and tbl_id in data_override:
-            table_data[tbl_id] = data_override[tbl_id]
+            table_data = data_override[tbl_id]
         else:
             func_name = tbl_def["function"]
             func = DATA_FUNCTIONS.get(func_name)
             if func:
-                table_data[tbl_id] = func(loader, start_date, end_date, tbl_def.get("params", {}))
+                table_data = func(loader, start_date, end_date, tbl_def.get("params", {}))
             else:
                 logger.warning(f"Data function not found: {func_name}")
-                table_data[tbl_id] = {"headers": [], "rows": []}
+                table_data = {"headers": [], "rows": []}
+        rendered[tbl_id] = render_single_table(tbl_id, tbl_def, table_data, font_size)
 
-    template = _env.get_template("email_generic.html")
-    return template.render(
-        layout=list(enumerate(layout_rows)), tables=tables_def, table_data=table_data,
-        row_gap=row_gap, font_size=font_size,
-        format_number=format_number, is_negative_display=is_negative_display)
+    # Detect if layout uses small grid integers (old format) vs pixel positions
+    max_y = max((item.get("y", 0) for item in layout_items), default=0) if layout_items else 0
+    if max_y <= 20:
+        positions = _grid_to_pixel_positions(layout_items, tables_def, default_gap, row_gap)
+    else:
+        positions = {item["id"]: (item.get("x", 0), item.get("y", 0)) for item in layout_items}
+
+    # Calculate bounding box for the container
+    max_w = 0
+    max_h = 0
+    for tbl_id, (x, y) in positions.items():
+        if tbl_id not in tables_def:
+            continue
+        tbl_def = tables_def[tbl_id]
+        col_widths = tbl_def.get("col_widths", [80])
+        tbl_w = sum(col_widths)
+        display_rows = tbl_def.get("display_rows", 3)
+        tbl_h = (display_rows + 2) * 18
+        max_w = max(max_w, x + tbl_w + 20)
+        max_h = max(max_h, y + tbl_h + 20)
+
+    html = f'<div style="position:relative;width:{max_w}px;height:{max_h}px;font-family:Calibri,Arial,sans-serif;font-size:{font_size}px;color:#333;">'
+    for tbl_id, (x, y) in positions.items():
+        if tbl_id not in rendered:
+            continue
+        html += f'<div style="position:absolute;left:{x}px;top:{y}px;">{rendered[tbl_id]}</div>'
+    html += '</div>'
+    return html
 
 
 def _apply_display_cols(headers, rows, col_widths, col_headers=None):
@@ -210,60 +244,8 @@ def render_single_table(table_id, table_def, table_data, font_size=11):
 
 def build_preview(report_type, loader, start_date, end_date, data_override=None):
     """Build an absolute-positioned preview matching the canvas layout."""
-    clear_cache()
-    layout_config = load_layout(report_type)
-    tables_def = layout_config["tables"]
-    layout_items = layout_config.get("layout", [])
-    settings = layout_config.get("settings", {})
-    font_size = settings.get("font_size", 11)
-
-    # Gather table data and render each table
-    rendered = {}
-    for tbl_id, tbl_def in tables_def.items():
-        if data_override and tbl_id in data_override:
-            table_data = data_override[tbl_id]
-        else:
-            func_name = tbl_def["function"]
-            func = DATA_FUNCTIONS.get(func_name)
-            if func:
-                table_data = func(loader, start_date, end_date, tbl_def.get("params", {}))
-            else:
-                table_data = {"headers": [], "rows": []}
-        rendered[tbl_id] = render_single_table(tbl_id, tbl_def, table_data, font_size)
-
-    default_gap = settings.get("default_table_gap", 4)
-    row_gap = settings.get("row_gap", 4)
-
-    # Detect if layout uses small grid integers (old format) vs pixel positions
-    max_y = max((item.get("y", 0) for item in layout_items), default=0) if layout_items else 0
-    if max_y <= 20:
-        # Convert grid layout to pixel positions using table dimensions
-        positions = _grid_to_pixel_positions(layout_items, tables_def, default_gap, row_gap)
-    else:
-        positions = {item["id"]: (item.get("x", 0), item.get("y", 0)) for item in layout_items}
-
-    # Calculate bounding box for the container
-    max_w = 0
-    max_h = 0
-    for tbl_id, (x, y) in positions.items():
-        if tbl_id not in tables_def:
-            continue
-        tbl_def = tables_def[tbl_id]
-        col_widths = tbl_def.get("col_widths", [80])
-        tbl_w = sum(col_widths)
-        display_rows = tbl_def.get("display_rows", 3)
-        tbl_h = (display_rows + 2) * 18
-        max_w = max(max_w, x + tbl_w + 20)
-        max_h = max(max_h, y + tbl_h + 20)
-
-    # Build absolute-positioned HTML with explicit container size
-    html = f'<div style="position:relative;width:{max_w}px;height:{max_h}px;font-family:Calibri,Arial,sans-serif;font-size:{font_size}px;color:#333;">'
-    for tbl_id, (x, y) in positions.items():
-        if tbl_id not in rendered:
-            continue
-        html += f'<div style="position:absolute;left:{x}px;top:{y}px;">{rendered[tbl_id]}</div>'
-    html += '</div>'
-    return html
+    return _render_layout_body(report_type, loader, start_date, end_date,
+                               data_override=data_override)
 
 
 def compute_email_width(layout_config):
