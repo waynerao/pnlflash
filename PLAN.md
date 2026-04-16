@@ -10,35 +10,38 @@
 
 ### Target Structure
 
+Repo root holds docs and project metadata; all source code lives under `pnlflash/`.
+
 ```
-pnlflash/
-├── app.py                  # Flask app entry point
-├── config.py               # Config loader (reads config.toml)
-├── config.toml             # TOML configuration
-├── base_loader.py          # Abstract BaseLoader interface
-├── mock_loader.py          # Mock data implementation
-├── email_builder.py        # HTML email generation using Jinja2
-├── email_sender.py         # Stub email sending
-├── formatter.py            # Financial number formatting helpers
-├── data_functions.py       # Registry of named data functions
-├── templates/
-│   ├── layout.html         # Base Flask UI layout
-│   ├── dashboard.html      # Main dashboard with all tabs (incl. Layout Config)
-│   └── email_generic.html  # Generic data-driven email template
-├── static/
-│   └── style.css           # Flask UI styles
-├── layouts/
-│   ├── daily_pnl.json      # Daily PnL layout config
-│   ├── monthly_paa.json    # Monthly PAA layout config
-│   └── weekly_paa.json     # Weekly PAA layout config
-├── mock_data/
-│   ├── daily_pnl.json      # Mock data for Daily PnL
-│   ├── monthly_paa.json    # Mock data for Monthly PAA
-│   └── weekly_paa.json     # Mock data for Weekly PAA
-├── spec.md
+.                           # repo root
 ├── PLAN.md
-└── pyproject.toml
+├── spec.md
+├── pyproject.toml
+├── uv.lock
+├── .python-version
+├── .gitignore
+└── pnlflash/               # application source
+    ├── app.py              # Flask app entry point
+    ├── config.py           # Config loader (reads config.toml)
+    ├── config.toml         # TOML configuration
+    ├── base_loader.py      # Abstract BaseLoader interface
+    ├── mock_loader.py      # Mock data implementation
+    ├── email_builder.py    # HTML email generation
+    ├── email_sender.py     # Stub email sending
+    ├── formatter.py        # Financial number formatting helpers
+    ├── data_functions.py   # Registry of named data functions
+    ├── templates/
+    │   ├── layout.html         # Base Flask UI layout
+    │   ├── dashboard.html      # Main dashboard with all tabs (incl. Layout Config)
+    │   └── email_generic.html  # (unused; legacy row-based template)
+    ├── static/
+    │   └── style.css       # Flask UI styles
+    ├── layouts/            # per-report layout JSONs
+    ├── mock_data/          # mock JSON datasets
+    └── output/             # generated previews/sent emails (gitignored)
 ```
+
+Run from repo root: `uv run python pnlflash/app.py`
 
 ## Phase 2: Mock Data & Data Loader
 
