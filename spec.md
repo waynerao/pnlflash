@@ -95,9 +95,10 @@ Same structure as Monthly PAA (4B) but with weekly date ranges instead of monthl
 
 ## 5. Email Engineering
 
-- **Layout**: Email body uses absolute-positioned `<div>` containers (`position:absolute`) wrapping inlined `<table>` blocks. This makes the sent email match the canvas/preview pixel-for-pixel.
-- **Single source of truth**: `_render_layout_body()` in `email_builder.py` is shared by both `build_email()` (wraps in full HTML doc) and `build_preview()` (returns body fragment).
-- **Outlook caveat**: Outlook Desktop (Word rendering engine) has limited support for `position:absolute`. Webmail and most modern clients render correctly. If Outlook compatibility becomes a hard requirement, a separate row-based fallback path can be re-introduced.
+- **Layout (Email)**: Email body uses a 2D grid `<table>` with `colspan` and `rowspan` to reproduce the canvas layout. `_render_email_body()` in `email_builder.py` converts absolute canvas positions into a unified HTML table grid — compatible with Outlook Desktop (Word rendering engine).
+- **Layout (Preview)**: Browser preview uses absolute-positioned `<div>` containers (`position:absolute`) for pixel-perfect canvas matching. `_render_layout_body()` handles this path.
+- **Dual rendering**: `build_email()` calls `_render_email_body()` (table-based); `build_preview()` calls `_render_layout_body()` (absolute-positioned). Both produce visually similar output from the same layout config.
+- **Non-breaking spaces**: All cell content uses `&nbsp;` instead of regular spaces to prevent text wrapping in Outlook's constrained column widths.
 - **Styling**: All CSS inlined.
 - **Visual Design**:
   - Blue headers (`#4a7ebb`)
@@ -284,7 +285,7 @@ Tables are arranged on a **free-form canvas** with absolute pixel positioning an
 - Table pixel width is the sum of its `col_widths`.
 - Tables can be placed anywhere on the canvas without row or grid constraints.
 - PowerPoint-style alignment guide lines appear when dragging (snap to other table edges within 5px).
-- At email render time, `grid_to_rows()` in `email_builder.py` clusters items by y-proximity (within 30px), sorts by x, and produces Outlook-compatible table rows.
+- At email render time, `_render_email_body()` converts canvas positions into a 2D grid table with `colspan`/`rowspan` for Outlook compatibility. Tables sharing vertical space use `rowspan`; tables sharing horizontal space use `colspan`. Gap columns and rows are real grid cells.
 - Backward compatible: detects old grid format (small integer y values) vs pixel format (large y values).
 
 Global layout settings:
@@ -370,7 +371,8 @@ The Send Email button (on Flash/PAA tabs) opens a modal with:
 - Editable Subject, To, CC fields (pre-filled from config per report type)
 - Email body rendered with absolute-positioned tables matching the canvas layout exactly (`build_preview()`)
 - Modal auto-sizes to fit content (bounding box calculated from layout positions)
-- Actual email sent via `build_email()` uses row-based HTML for Outlook compatibility
+- Actual email sent via `build_email()` uses 2D grid table with colspan/rowspan for Outlook compatibility
+- Sent emails saved as `.eml` files (openable directly in Outlook)
 
 ### 7H. General UI Features
 

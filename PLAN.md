@@ -324,9 +324,33 @@ Run from repo root: `uv run python pnlflash/app.py`
   - Note: `position:absolute` has limited support in Outlook Desktop (Word renderer); test before relying on Outlook
 - [x] `email_generic.html` template is now unused (kept for reference, can be deleted)
 
+## Phase 15: Outlook-Compatible Email Layout
+
+- [x] Replaced absolute-positioned email body with 2D grid table using colspan + rowspan
+  - `_render_email_body()`: converts canvas positions into a unified HTML `<table>` grid
+  - Collects all unique x-boundaries and y-boundaries from table bounding boxes
+  - Each data table maps to a rectangular grid region via `colspan` and `rowspan`
+  - Gap columns and gap rows are real grid cells (empty `<td>` spacers)
+  - `<col width>` attributes lock column widths; outer table has fixed `width` attribute
+  - Works in Outlook Desktop (Word rendering engine) which doesn't support `position:absolute`
+- [x] Preview remains absolute-positioned (`_render_layout_body()` unchanged for browser preview)
+  - `build_email()` calls `_render_email_body()` (table-based for Outlook)
+  - `build_preview()` calls `_render_layout_body()` (absolute-positioned for browser)
+- [x] Vertical overlap resolution
+  - After computing table bounding boxes, clamps each table's estimated `y_end` to not exceed
+    the next table's `y_start - row_gap` in the same column area
+  - Prevents grid cell conflicts and ensures minimum vertical gaps between stacked tables
+- [x] Non-breaking spaces in all cell content
+  - Replaces regular spaces with `&nbsp;` (`\u00a0`) in table names, headers, and data cells
+  - Prevents Outlook from wrapping text even when column width is tight
+  - Also added `nowrap` HTML attribute on all `<td>` elements as secondary protection
+- [x] Email sender now saves `.eml` files (was `.html`)
+  - `send_email()` creates proper MIME message with Subject, From, To, CC headers
+  - `.eml` files can be double-clicked to open directly in Outlook for testing
+
 ## Build Order
 
-Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7 → Phase 8 → Phase 9 → Phase 10 → Phase 11 → Phase 12 → Phase 13 → Phase 14
+Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7 → Phase 8 → Phase 9 → Phase 10 → Phase 11 → Phase 12 → Phase 13 → Phase 14 → Phase 15
 
 ## Key Decisions
 

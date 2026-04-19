@@ -87,19 +87,150 @@ def _grid_to_pixel_positions(layout_items, tables_def, default_gap, row_gap):
 
 
 def build_email(report_type, loader, start_date, end_date, data_override=None, layout_override=None):
-    """Build the full email HTML document. Body uses the same absolute-positioned
-    layout as the canvas/preview so what users see in the editor matches what they send."""
-    body = _render_layout_body(report_type, loader, start_date, end_date,
-                               data_override=data_override, layout_override=layout_override)
+    """Build the full email HTML document using Outlook-compatible nested tables."""
+    body = _render_email_body(report_type, loader, start_date, end_date,
+                              data_override=data_override, layout_override=layout_override)
     return (
         '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
         '<body style="margin:0;padding:0;">' + body + '</body></html>'
     )
 
 
+def _render_email_body(report_type, loader, start_date, end_date,
+                       data_override=None, layout_override=None):
+    """Render Outlook-compatible layout using a 2D grid table with merged cells.
+
+    Converts absolute canvas positions into a unified grid table where each data
+    table occupies a rectangular region via colspan + rowspan. This works in
+    Outlook Desktop (Word rendering engine) which doesn't support position:absolute.
+    """
+    clear_cache()
+    layout_config = layout_override if layout_override else load_layout(report_type)
+    tables_def = layout_config["tables"]
+    layout_items = layout_config.get("layout", [])
+    settings = layout_config.get("settings", {})
+    font_size = settings.get("font_size", 11)
+    default_gap = settings.get("default_table_gap", 4)
+    row_gap = settings.get("row_gap", 4)
+    row_height_px = 18  # approximate height per logical row (title/header/data)
+
+    # Render each table's HTML
+    rendered = {}
+    for tbl_id, tbl_def in tables_def.items():
+        if data_override and tbl_id in data_override:
+            table_data = data_override[tbl_id]
+        else:
+            func_name = tbl_def["function"]
+            func = DATA_FUNCTIONS.get(func_name)
+            if func:
+                table_data = func(loader, start_date, end_date, tbl_def.get("params", {}))
+            else:
+                logger.warning(f"Data function not found: {func_name}")
+                table_data = {"headers": [], "rows": []}
+        rendered[tbl_id] = render_single_table(tbl_id, tbl_def, table_data, font_size)
+
+    # Get pixel positions (convert grid integers if needed)
+    max_y = max((item.get("y", 0) for item in layout_items), default=0) if layout_items else 0
+    if max_y <= 20:
+        positions = _grid_to_pixel_positions(layout_items, tables_def, default_gap, row_gap)
+    else:
+        positions = {item["id"]: (item.get("x", 0), item.get("y", 0)) for item in layout_items}
+
+    # Compute bounding box for each table: (x_start, x_end, y_start, y_end)
+    table_boxes = {}
+    for tbl_id, (x, y) in positions.items():
+        if tbl_id not in tables_def:
+            continue
+        tbl_w = sum(tables_def[tbl_id].get("col_widths", [80]))
+        display_rows = tables_def[tbl_id].get("display_rows", 3)
+        tbl_h = (display_rows + 2) * row_height_px
+        table_boxes[tbl_id] = (x, x + tbl_w, y, y + tbl_h)
+
+    if not table_boxes:
+        return ''
+
+    # Resolve vertical overlaps: if two tables share x-space and the upper
+    # table's estimated y_end meets or exceeds the lower table's y_start,
+    # clamp it to leave a gap (row_gap) between them.
+    for tbl_a in list(table_boxes):
+        x1a, x2a, y1a, y2a = table_boxes[tbl_a]
+        for tbl_b in list(table_boxes):
+            if tbl_a == tbl_b:
+                continue
+            x1b, x2b, y1b, y2b = table_boxes[tbl_b]
+            # Check x-overlap and A is above B
+            if x1a < x2b and x1b < x2a and y1a < y1b and y2a >= y1b:
+                table_boxes[tbl_a] = (x1a, x2a, y1a, y1b - row_gap)
+
+    # Step 1: Build grid axes from all unique boundaries
+    x_bounds = sorted({v for box in table_boxes.values() for v in (box[0], box[1])})
+    y_bounds = sorted({v for box in table_boxes.values() for v in (box[2], box[3])})
+    grid_cols = [(x_bounds[i], x_bounds[i + 1]) for i in range(len(x_bounds) - 1)]
+    grid_rows = [(y_bounds[i], y_bounds[i + 1]) for i in range(len(y_bounds) - 1)]
+    col_widths_px = [e - s for s, e in grid_cols]
+    row_heights_px = [e - s for s, e in grid_rows]
+    num_cols = len(grid_cols)
+    num_rows = len(grid_rows)
+
+    # Step 2: Map each table to its grid rectangle and mark occupied cells
+    table_grid = {}  # {tbl_id: (col_start, col_end, row_start, row_end)}
+    occupied = [[False] * num_cols for _ in range(num_rows)]
+    cell_table = {}  # {(row, col): tbl_id} for top-left corner of each table
+
+    for tbl_id, (x1, x2, y1, y2) in table_boxes.items():
+        cs = next(i for i, (s, _) in enumerate(grid_cols) if s == x1)
+        ce = next(i for i, (_, e) in enumerate(grid_cols) if e == x2)
+        rs = next(i for i, (s, _) in enumerate(grid_rows) if s == y1)
+        re = next(i for i, (_, e) in enumerate(grid_rows) if e == y2)
+        table_grid[tbl_id] = (cs, ce, rs, re)
+        cell_table[(rs, cs)] = tbl_id
+        for r in range(rs, re + 1):
+            for c in range(cs, ce + 1):
+                occupied[r][c] = True
+
+    # Step 3: Render as HTML table
+    total_width = sum(col_widths_px)
+    html = (f'<table cellpadding="0" cellspacing="0" width="{total_width}" '
+            f'style="border-collapse:collapse;'
+            f'font-family:Calibri,Arial,sans-serif;'
+            f'font-size:{font_size}px;color:#333;">')
+    for w in col_widths_px:
+        html += f'<col width="{w}">'
+
+    for r in range(num_rows):
+        html += f'<tr style="height:{row_heights_px[r]}px;">'
+        c = 0
+        while c < num_cols:
+            if (r, c) in cell_table:
+                tbl_id = cell_table[(r, c)]
+                cs, ce, rs, re = table_grid[tbl_id]
+                colspan = ce - cs + 1
+                rowspan = re - rs + 1
+                span_attrs = f'colspan="{colspan}"' if colspan > 1 else ''
+                if rowspan > 1:
+                    span_attrs += f' rowspan="{rowspan}"'
+                html += f'<td {span_attrs} valign="top">{rendered.get(tbl_id, "")}</td>'
+                c = ce + 1
+            elif occupied[r][c]:
+                # Covered by rowspan/colspan from a table above/left — skip
+                c += 1
+            else:
+                # Empty cell — merge consecutive empty cells in this row
+                span = 1
+                while c + span < num_cols and not occupied[r][c + span]:
+                    span += 1
+                span_attr = f' colspan="{span}"' if span > 1 else ''
+                html += f'<td{span_attr}></td>'
+                c += span
+        html += '</tr>'
+
+    html += '</table>'
+    return html
+
+
 def _render_layout_body(report_type, loader, start_date, end_date,
                         data_override=None, layout_override=None):
-    """Render the absolute-positioned tables layout (no <html>/<body> wrapper)."""
+    """Render the absolute-positioned tables layout for browser preview."""
     clear_cache()
     layout_config = layout_override if layout_override else load_layout(report_type)
     tables_def = layout_config["tables"]
@@ -212,8 +343,11 @@ def render_single_table(table_id, table_def, table_data, font_size=11):
 
     rows = _apply_display_rows(rows, headers, display_rows)
 
-    html = '<table cellpadding="0" cellspacing="0" style="border-collapse:collapse;">'
-    html += f'<tr><td colspan="{len(headers)}" style="font-weight:bold;padding:2px 4px 1px 2px;font-size:{font_size}px;color:#333;">{name}</td></tr>'
+    total_width = sum(col_widths) if col_widths else 0
+    width_attr = f'width="{total_width}" ' if total_width else ''
+    html = f'<table cellpadding="0" cellspacing="0" {width_attr}style="border-collapse:collapse;">'
+    safe_name = name.replace(' ', '\u00a0')
+    html += f'<tr><td colspan="{len(headers)}" nowrap style="font-weight:bold;padding:2px 4px 1px 2px;font-size:{font_size}px;color:#333;">{safe_name}</td></tr>'
     num_cols = len(headers)
     html += '<tr>'
     for i, h in enumerate(headers):
@@ -221,7 +355,8 @@ def render_single_table(table_id, table_def, table_data, font_size=11):
         align = 'left' if i == 0 else 'right'
         border_l = 'border-left:1px solid #000;' if i == 0 else ''
         border_r = 'border-right:1px solid #000;' if i == num_cols - 1 else ''
-        html += f'<td style="background-color:#4a7ebb;color:#fff;font-weight:bold;padding:2px 5px;font-size:{header_font}px;text-align:{align};width:{cw}px;{border_l}{border_r}">{h}</td>'
+        safe_h = str(h).replace(' ', '\u00a0')
+        html += f'<td nowrap style="background-color:#4a7ebb;color:#fff;font-weight:bold;padding:2px 5px;font-size:{header_font}px;text-align:{align};width:{cw}px;{border_l}{border_r}">{safe_h}</td>'
     html += '</tr>'
     last_ri = len(rows) - 1
     for ri, row_data in enumerate(rows):
@@ -230,13 +365,13 @@ def render_single_table(table_id, table_def, table_data, font_size=11):
         border_bot = 'border-bottom:1px solid #000;' if ri == last_ri else 'border-bottom:1px solid #e8e8e8;'
         for ci, cell in enumerate(row_data):
             fmt = col_formats[ci] if ci < len(col_formats) else 'raw'
-            formatted = format_number(cell, fmt)
+            formatted = format_number(cell, fmt).replace(' ', '\u00a0')
             cw = col_widths[ci] if ci < len(col_widths) else 60
             align = 'left' if ci == 0 else 'right'
             color = 'color:#cc0000;' if is_negative_display(cell) else ''
             border_l = 'border-left:1px solid #000;' if ci == 0 else ''
             border_r = 'border-right:1px solid #000;' if ci == num_cols - 1 else ''
-            html += f'<td style="padding:1px 5px;font-size:{font_size}px;text-align:{align};{color}{border_bot}{border_l}{border_r}white-space:nowrap;width:{cw}px;">{formatted}</td>'
+            html += f'<td nowrap style="padding:1px 5px;font-size:{font_size}px;text-align:{align};{color}{border_bot}{border_l}{border_r}white-space:nowrap;width:{cw}px;">{formatted}</td>'
         html += '</tr>'
     html += '</table>'
     return html
