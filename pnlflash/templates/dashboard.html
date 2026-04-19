@@ -106,10 +106,10 @@
         <button class="btn btn-primary btn-sm" onclick="loadData('daily_pnl', 'dna')">Load DNA Data</button>
         <div class="sep"></div>
         <span class="status-chip none" id="daily-live-chip">Live PnL: --</span>
-        <button class="btn btn-primary btn-sm" onclick="loadData('daily_pnl', 'live')">Load Live PnL</button>
+        <button class="btn btn-primary btn-sm" onclick="loadData('daily_pnl', 'live_pnl')">Load Live PnL</button>
         <div class="sep"></div>
         <span class="status-chip none" id="daily-hist-chip">Hist PnL: --</span>
-        <button class="btn btn-primary btn-sm" onclick="loadData('daily_pnl', 'hist')">Load Hist PnL</button>
+        <button class="btn btn-primary btn-sm" onclick="loadData('daily_pnl', 'hist_pnl')">Load Hist PnL</button>
     </div>
 
     <div class="adjustment-bar">
@@ -137,7 +137,7 @@
         <button class="btn btn-primary btn-sm" onclick="loadData('monthly_paa', 'dna')">Load DNA Data</button>
         <div class="sep"></div>
         <span class="status-chip none" id="monthly-hist-chip">Hist PnL: --</span>
-        <button class="btn btn-primary btn-sm" onclick="loadData('monthly_paa', 'hist')">Load Hist PnL</button>
+        <button class="btn btn-primary btn-sm" onclick="loadData('monthly_paa', 'hist_pnl')">Load Hist PnL</button>
     </div>
 
     <div class="data-tables-grid" id="monthly-data-tables"></div>
@@ -158,7 +158,7 @@
         <button class="btn btn-primary btn-sm" onclick="loadData('weekly_paa', 'dna')">Load DNA Data</button>
         <div class="sep"></div>
         <span class="status-chip none" id="weekly-hist-chip">Hist PnL: --</span>
-        <button class="btn btn-primary btn-sm" onclick="loadData('weekly_paa', 'hist')">Load Hist PnL</button>
+        <button class="btn btn-primary btn-sm" onclick="loadData('weekly_paa', 'hist_pnl')">Load Hist PnL</button>
     </div>
 
     <div class="data-tables-grid" id="weekly-data-tables"></div>
@@ -390,20 +390,40 @@ function fmtDate(d) {
     return `${y}-${m}-${day}`;
 }
 
-function loadData(reportType, source) {
+function loadData(reportType, sources) {
+    if (typeof sources === 'string') sources = [sources];
     let range = getDateRange(reportType);
 
-    fetch(`/load?token=${TOKEN}&report_type=${reportType}&source=${source}&start_date=${range.start_date}&end_date=${range.end_date}`)
+    // Set loading status for requested sources
+    sources.forEach(src => updateStatusChipLoading(reportType, src));
+
+    fetch(`/load?token=${TOKEN}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            report_type: reportType,
+            sources: sources,
+            start_date: range.start_date,
+            end_date: range.end_date
+        })
+    })
         .then(r => r.json())
         .then(result => {
             if (result.status === 'ok') {
-                updateStatusChip(reportType, source, result);
-                if (source === 'dna') {
+                // Update status chips from load_status
+                for (let src in result.load_status) {
+                    updateStatusChip(reportType, src, result.load_status[src]);
+                }
+                // Update data tables if DNA was loaded
+                if (sources.includes('dna') && result.data) {
                     dataStore[reportType] = JSON.parse(JSON.stringify(result.data));
                     originalData[reportType] = JSON.parse(JSON.stringify(result.data));
                     renderDataTables(reportType);
                 }
-                if (source === 'hist') updateHistChipAll(result);
+                // Override hist chip with detailed info if available
+                if (sources.includes('hist_pnl') && result.hist_info) {
+                    updateHistChipDetail(reportType, result.hist_info);
+                }
             } else {
                 alert('Load failed: ' + (result.message || 'Unknown error'));
             }
@@ -411,38 +431,58 @@ function loadData(reportType, source) {
         .catch(err => alert('Load error: ' + err));
 }
 
-function updateStatusChip(reportType, source, result) {
+function updateStatusChipLoading(reportType, source) {
     let prefix = reportType === 'daily_pnl' ? 'daily' : reportType === 'monthly_paa' ? 'monthly' : 'weekly';
-    let time = new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
+    let chipId = prefix + '-' + source.replace('_pnl', '').replace('_', '-') + '-chip';
+    // Map source to chip: dna -> dna-chip, hist_pnl -> hist-chip, live_pnl -> live-chip
+    if (source === 'dna') chipId = prefix + '-dna-chip';
+    else if (source === 'hist_pnl') chipId = prefix + '-hist-chip';
+    else if (source === 'live_pnl') chipId = prefix + '-live-chip';
+    let chip = document.getElementById(chipId);
+    if (!chip) return;
+    let label = source === 'dna' ? 'DNA' : source === 'hist_pnl' ? 'Hist PnL' : 'Live PnL';
+    chip.textContent = label + ': loading...';
+    chip.className = 'status-chip loading';
+}
 
-    if (source === 'dna') {
-        let chip = document.getElementById(prefix + '-dna-chip');
-        chip.textContent = 'DNA: OK (' + time + ')';
+function updateStatusChip(reportType, source, statusInfo) {
+    let prefix = reportType === 'daily_pnl' ? 'daily' : reportType === 'monthly_paa' ? 'monthly' : 'weekly';
+    let label = source === 'dna' ? 'DNA' : source === 'hist_pnl' ? 'Hist PnL' : 'Live PnL';
+    let chipId;
+    if (source === 'dna') chipId = prefix + '-dna-chip';
+    else if (source === 'hist_pnl') chipId = prefix + '-hist-chip';
+    else if (source === 'live_pnl') chipId = prefix + '-live-chip';
+    else return;
+    let chip = document.getElementById(chipId);
+    if (!chip) return;
+    let time = statusInfo.timestamp || '';
+    if (statusInfo.status === 'ready') {
+        chip.textContent = label + ': OK (' + time + ')';
         chip.className = 'status-chip ok';
-    } else if (source === 'live') {
-        let chip = document.getElementById(prefix + '-live-chip');
-        chip.textContent = 'Live PnL: OK (' + time + ')';
-        chip.className = 'status-chip ok';
-    } else if (source === 'hist') {
-        setHistChip(prefix, result, time);
+    } else if (statusInfo.status === 'error') {
+        chip.textContent = label + ': Error (' + time + ')';
+        chip.className = 'status-chip error';
+        chip.title = statusInfo.error || '';
+    } else {
+        chip.textContent = label + ': ' + statusInfo.status;
+        chip.className = 'status-chip none';
     }
 }
 
-function setHistChip(prefix, result, time) {
+function updateHistChipDetail(reportType, histInfo) {
+    // Override hist chip with detailed info (latest date, T-1 availability)
+    let prefix = reportType === 'daily_pnl' ? 'daily' : reportType === 'monthly_paa' ? 'monthly' : 'weekly';
     let chip = document.getElementById(prefix + '-hist-chip');
     if (!chip) return;
-    if (result.t1_available) {
-        chip.textContent = 'Hist PnL: ' + result.latest_date + ' (' + time + ')';
+    let time = chip.textContent.match(/\((\d{2}:\d{2}:\d{2})\)/);
+    let timeStr = time ? time[1] : '';
+    if (histInfo.t1_available) {
+        chip.textContent = 'Hist PnL: ' + histInfo.latest_date + ' (' + timeStr + ')';
         chip.className = 'status-chip ok';
     } else {
-        chip.textContent = 'Hist PnL: T-1 N/A, latest ' + result.latest_date + ' (' + time + ')';
+        chip.textContent = 'Hist PnL: T-1 N/A, latest ' + histInfo.latest_date + ' (' + timeStr + ')';
         chip.className = 'status-chip warn';
     }
-}
-
-function updateHistChipAll(result) {
-    let time = new Date().toLocaleTimeString('en-GB', {hour:'2-digit', minute:'2-digit'});
-    ['daily', 'monthly', 'weekly'].forEach(p => setHistChip(p, result, time));
 }
 
 // ==================== Editable Data Tables ====================
@@ -543,7 +583,7 @@ function openSendModal(reportType) {
     document.getElementById('modal-to').value = cfg.to.join(', ');
     document.getElementById('modal-cc').value = cfg.cc.join(', ');
 
-    fetch(`/preview?token=${TOKEN}&report_type=${reportType}&start_date=${range.start_date}&end_date=${range.end_date}`, {
+    fetch(`/preview?token=${TOKEN}&report_type=${reportType}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({data: dataStore[reportType]})
@@ -564,13 +604,12 @@ function confirmSend() {
     let subject = document.getElementById('modal-subject').value;
     let toList = document.getElementById('modal-to').value;
     let ccList = document.getElementById('modal-cc').value;
-    let range = getDateRange(currentSendTab);
 
     fetch(`/send?token=${TOKEN}`, {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({
-            report_type: currentSendTab, start_date: range.start_date, end_date: range.end_date,
+            report_type: currentSendTab,
             subject: subject, to: toList, cc: ccList,
             data: dataStore[currentSendTab]
         })
@@ -1236,8 +1275,8 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     loadData('daily_pnl', 'dna');
-    loadData('daily_pnl', 'live');
-    loadData('daily_pnl', 'hist');
+    loadData('daily_pnl', 'live_pnl');
+    loadData('daily_pnl', 'hist_pnl');
     loadData('monthly_paa', 'dna');
     loadData('weekly_paa', 'dna');
 });

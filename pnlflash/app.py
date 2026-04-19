@@ -1,13 +1,14 @@
 import logging
 import json
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 from pathlib import Path
 from functools import wraps
 
 from flask import Flask, request, jsonify, render_template, abort
 
 from config import APP_HOST, APP_PORT, TOKENS, EMAIL_SUBJECTS, EMAIL_RECIPIENTS, PORTFOLIO_METRICS_PATH, S3_RELOAD_AFTER, REALTIME_RELOAD_AFTER, SETUP_PASSWORD
-from mock_loader import MockLoader
+from data_loader import MockLoader
+from data_store import DataStore
 from email_builder import build_email, build_preview, render_single_table, compute_email_width
 from email_sender import send_email
 from data_functions import DATA_FUNCTIONS
@@ -17,10 +18,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 loader = MockLoader()
+data_store = DataStore()
 LAYOUTS_DIR = Path(__file__).parent / "layouts"
-
-# In-memory cache for hist PnL (shared across tabs)
-_hist_pnl_cache = {"data": None, "loaded_at": None}
 
 
 def validate_token(f):
@@ -74,20 +73,51 @@ def get_email_config():
     return config
 
 
-def save_portfolio_metrics(data, report_date):
-    portfolio_metrics = data.get("portfolio_metrics")
-    if not portfolio_metrics:
+def save_portfolio_metrics(report_date):
+    """Save portfolio metrics from DataStore to CSV."""
+    dna = data_store.get_dna_data("daily_pnl")
+    df = dna.get("portfolio_metrics")
+    if df is None or (hasattr(df, 'empty') and df.empty):
         return
     PORTFOLIO_METRICS_PATH.mkdir(parents=True, exist_ok=True)
     date_str = report_date.replace("-", "")[:8]
     csv_path = PORTFOLIO_METRICS_PATH / f"{date_str}.csv"
-    headers = portfolio_metrics["headers"]
-    rows = portfolio_metrics["rows"]
-    with open(csv_path, "w", encoding="utf-8") as f:
-        f.write(",".join(str(h) for h in headers) + "\n")
-        for row in rows:
-            f.write(",".join(str(c) for c in row) + "\n")
+    df.to_csv(csv_path, index=False)
     logger.info(f"Portfolio metrics saved to {csv_path}")
+
+
+def _get_table_data(report_type):
+    """Run all data functions for a report type and return per-table data."""
+    layout = _load_layout(report_type)
+    if not layout:
+        return {}
+    tables_def = layout.get("tables", {})
+    result = {}
+    for tbl_id, tbl_def in tables_def.items():
+        func = DATA_FUNCTIONS.get(tbl_def.get("function", ""))
+        if func:
+            try:
+                result[tbl_id] = func(data_store, tbl_def.get("params", {}))
+            except Exception as e:
+                logger.warning(f"Data function error for {tbl_id}: {e}")
+                result[tbl_id] = {"headers": [], "rows": []}
+        else:
+            result[tbl_id] = {"headers": [], "rows": []}
+    return result
+
+
+def _check_t1_available(report_date, latest_date):
+    if not latest_date or not report_date:
+        return False
+    try:
+        report_dt = datetime.strptime(report_date[:10], "%Y-%m-%d").date()
+        latest_dt = datetime.strptime(latest_date[:10], "%Y-%m-%d").date()
+        t1 = report_dt - timedelta(days=1)
+        while t1.weekday() >= 5:
+            t1 -= timedelta(days=1)
+        return latest_dt >= t1
+    except ValueError:
+        return False
 
 
 # --- Dashboard routes ---
@@ -107,56 +137,63 @@ def dashboard(**kwargs):
         schedule={"s3_reload_after": S3_RELOAD_AFTER, "realtime_reload_after": REALTIME_RELOAD_AFTER})
 
 
-@app.route("/load")
+@app.route("/load", methods=["POST"])
 @validate_token
 def load_data(**kwargs):
-    report_type = request.args.get("report_type")
-    source = request.args.get("source")
-    start_date = request.args.get("start_date", date.today().isoformat())
-    end_date = request.args.get("end_date", date.today().isoformat())
+    """Load data sources in parallel into DataStore, then return per-table data."""
+    body = request.get_json()
+    report_type = body.get("report_type")
+    sources = body.get("sources", ["dna"])
+    start_date = body.get("start_date", date.today().isoformat())
+    end_date = body.get("end_date", date.today().isoformat())
 
-    if source == "dna":
-        data = loader.load_dna_data(start_date, end_date, report_type)
-        if report_type == "daily_pnl":
-            save_portfolio_metrics(data, start_date)
-        return jsonify({"status": "ok", "data": data})
-    elif source == "hist":
-        result = loader.load_hist_pnl(start_date)
-        _hist_pnl_cache["data"] = result
-        _hist_pnl_cache["loaded_at"] = datetime.now().isoformat()
-        latest_date = result.get("latest_date", "")
-        t1_available = _check_t1_available(start_date, latest_date)
-        return jsonify({"status": "ok", "latest_date": latest_date, "t1_available": t1_available, "pnl_data": result.get("pnl_by_book", {})})
-    elif source == "live":
-        result = loader.load_live_pnl(start_date)
-        return jsonify({"status": "ok", "data": result})
-    return jsonify({"status": "error", "message": f"Unknown source: {source}"})
+    # Load requested sources in parallel
+    load_status = data_store.load(loader, sources, report_type, start_date, end_date)
+
+    # Auto-save portfolio metrics after daily DNA load
+    if "dna" in sources and report_type == "daily_pnl":
+        save_portfolio_metrics(start_date)
+
+    # Build hist PnL info if loaded
+    hist_info = {}
+    if "hist_pnl" in sources:
+        hist_data = data_store.get_hist_pnl()
+        latest_date = hist_data.get("latest_date", "")
+        pnl_df = hist_data.get("pnl")
+        pnl_by_book = {}
+        if pnl_df is not None and not pnl_df.empty:
+            pnl_by_book = pnl_df.set_index("book").to_dict("index")
+        hist_info = {
+            "latest_date": latest_date,
+            "t1_available": _check_t1_available(start_date, latest_date),
+            "pnl_data": pnl_by_book,
+        }
+
+    # Run data functions to get per-table data for the browser
+    table_data = _get_table_data(report_type)
+
+    return jsonify({
+        "status": "ok",
+        "load_status": load_status,
+        "data": table_data,
+        "hist_info": hist_info,
+    })
 
 
-def _check_t1_available(report_date, latest_date):
-    if not latest_date or not report_date:
-        return False
-    try:
-        report_dt = datetime.strptime(report_date[:10], "%Y-%m-%d").date()
-        latest_dt = datetime.strptime(latest_date[:10], "%Y-%m-%d").date()
-        from datetime import timedelta
-        t1 = report_dt - timedelta(days=1)
-        while t1.weekday() >= 5:
-            t1 -= timedelta(days=1)
-        return latest_dt >= t1
-    except ValueError:
-        return False
+@app.route("/load/status")
+@validate_token
+def load_status(**kwargs):
+    """Return current load status per source without triggering a new load."""
+    return jsonify({"status": "ok", "load_status": data_store.get_status()})
 
 
 @app.route("/preview", methods=["POST"])
 @validate_token
 def preview(**kwargs):
     report_type = request.args.get("report_type")
-    start_date = request.args.get("start_date", date.today().isoformat())
-    end_date = request.args.get("end_date", date.today().isoformat())
     body = request.get_json()
     data_override = body.get("data", {})
-    html = build_preview(report_type, loader, start_date, end_date, data_override if data_override else None)
+    html = build_preview(report_type, data_store, data_override if data_override else None)
     return jsonify({"status": "ok", "html": html})
 
 
@@ -165,8 +202,6 @@ def preview(**kwargs):
 def send(**kwargs):
     body = request.get_json()
     report_type = body.get("report_type")
-    start_date = body.get("start_date", date.today().isoformat())
-    end_date = body.get("end_date", date.today().isoformat())
     subject = body.get("subject", "")
     to_str = body.get("to", "")
     cc_str = body.get("cc", "")
@@ -174,7 +209,7 @@ def send(**kwargs):
 
     to_list = [s.strip() for s in to_str.split(",") if s.strip()]
     cc_list = [s.strip() for s in cc_str.split(",") if s.strip()]
-    html = build_email(report_type, loader, start_date, end_date, data_override if data_override else None)
+    html = build_email(report_type, data_store, data_override if data_override else None)
     file_path = send_email(html, subject, to_list, cc_list)
     logger.info(f"Email sent by {kwargs['user']}: {subject}")
     return jsonify({"status": "ok", "file_path": file_path})
@@ -194,6 +229,11 @@ def setup_load(**kwargs):
     if not layout:
         layout = {"settings": {"row_gap": 4, "default_table_gap": 4, "font_size": 11}, "tables": {}, "layout": []}
     font_size = layout.get("settings", {}).get("font_size", 11)
+
+    # Ensure DataStore has data for this report type
+    today = date.today().isoformat()
+    data_store.load(loader, ["dna"], report_type, today, today)
+
     # Render each table as HTML and compute dimensions
     dimensions = {}
     rendered_tables = {}
@@ -204,12 +244,10 @@ def setup_load(**kwargs):
         table_data = {"headers": [], "rows": []}
         if func:
             try:
-                today = date.today().isoformat()
-                table_data = func(loader, today, today, tbl_def.get("params", {}))
+                table_data = func(data_store, tbl_def.get("params", {}))
                 rows = len(table_data.get("rows", []))
             except Exception:
                 pass
-        # Set default display_rows from actual data if not configured
         if "display_rows" not in tbl_def:
             tbl_def["display_rows"] = rows
         dimensions[tbl_id] = {"w_px": w_px, "rows": rows}
@@ -234,8 +272,7 @@ def setup_render_table(**kwargs):
     table_data = {"headers": [], "rows": []}
     if func:
         try:
-            today = date.today().isoformat()
-            table_data = func(loader, today, today, tbl_def.get("params", {}))
+            table_data = func(data_store, tbl_def.get("params", {}))
         except Exception:
             pass
     font_size = body.get("font_size", 11)

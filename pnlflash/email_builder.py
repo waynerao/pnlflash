@@ -5,7 +5,7 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader
 
 from formatter import format_number, is_negative_display
-from data_functions import DATA_FUNCTIONS, clear_cache
+from data_functions import DATA_FUNCTIONS
 
 logger = logging.getLogger(__name__)
 
@@ -86,9 +86,9 @@ def _grid_to_pixel_positions(layout_items, tables_def, default_gap, row_gap):
     return positions
 
 
-def build_email(report_type, loader, start_date, end_date, data_override=None, layout_override=None):
+def build_email(report_type, data_store, data_override=None, layout_override=None):
     """Build the full email HTML document using Outlook-compatible nested tables."""
-    body = _render_email_body(report_type, loader, start_date, end_date,
+    body = _render_email_body(report_type, data_store,
                               data_override=data_override, layout_override=layout_override)
     return (
         '<!DOCTYPE html><html><head><meta charset="utf-8"></head>'
@@ -96,7 +96,7 @@ def build_email(report_type, loader, start_date, end_date, data_override=None, l
     )
 
 
-def _render_email_body(report_type, loader, start_date, end_date,
+def _render_email_body(report_type, data_store,
                        data_override=None, layout_override=None):
     """Render Outlook-compatible layout using a 2D grid table with merged cells.
 
@@ -104,7 +104,6 @@ def _render_email_body(report_type, loader, start_date, end_date,
     table occupies a rectangular region via colspan + rowspan. This works in
     Outlook Desktop (Word rendering engine) which doesn't support position:absolute.
     """
-    clear_cache()
     layout_config = layout_override if layout_override else load_layout(report_type)
     tables_def = layout_config["tables"]
     layout_items = layout_config.get("layout", [])
@@ -123,7 +122,7 @@ def _render_email_body(report_type, loader, start_date, end_date,
             func_name = tbl_def["function"]
             func = DATA_FUNCTIONS.get(func_name)
             if func:
-                table_data = func(loader, start_date, end_date, tbl_def.get("params", {}))
+                table_data = func(data_store, tbl_def.get("params", {}))
             else:
                 logger.warning(f"Data function not found: {func_name}")
                 table_data = {"headers": [], "rows": []}
@@ -228,10 +227,9 @@ def _render_email_body(report_type, loader, start_date, end_date,
     return html
 
 
-def _render_layout_body(report_type, loader, start_date, end_date,
+def _render_layout_body(report_type, data_store,
                         data_override=None, layout_override=None):
     """Render the absolute-positioned tables layout for browser preview."""
-    clear_cache()
     layout_config = layout_override if layout_override else load_layout(report_type)
     tables_def = layout_config["tables"]
     layout_items = layout_config.get("layout", [])
@@ -249,7 +247,7 @@ def _render_layout_body(report_type, loader, start_date, end_date,
             func_name = tbl_def["function"]
             func = DATA_FUNCTIONS.get(func_name)
             if func:
-                table_data = func(loader, start_date, end_date, tbl_def.get("params", {}))
+                table_data = func(data_store, tbl_def.get("params", {}))
             else:
                 logger.warning(f"Data function not found: {func_name}")
                 table_data = {"headers": [], "rows": []}
@@ -377,9 +375,9 @@ def render_single_table(table_id, table_def, table_data, font_size=11):
     return html
 
 
-def build_preview(report_type, loader, start_date, end_date, data_override=None):
+def build_preview(report_type, data_store, data_override=None):
     """Build an absolute-positioned preview matching the canvas layout."""
-    return _render_layout_body(report_type, loader, start_date, end_date,
+    return _render_layout_body(report_type, data_store,
                                data_override=data_override)
 
 

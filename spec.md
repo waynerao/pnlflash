@@ -299,12 +299,10 @@ Global layout settings:
 #### Data Functions
 
 - Data functions are registered in `data_functions.py` and referenced by name in layout config.
-- Each function takes `(loader, start_date, end_date, params)` and returns `{"headers": [...], "rows": [[...]]}`.
-- All dates are `YYYY-MM-DD` strings:
-  - Daily: `start_date == end_date == selected date`
-  - Monthly: `start_date = first weekday of month`, `end_date = last weekday of month`
-  - Weekly: `start_date = Monday`, `end_date = Friday`
-- Per-build cache (`_get_data()`) ensures `loader.load_dna_data()` is called once per `(start_date, end_date, report_type)`, shared across all tables in the same build cycle.
+- Each function takes `(data_store, params)` and returns `{"headers": [...], "rows": [[...]]}`.
+- Functions access `DataStore` directly — no loader or date parameters needed.
+- `params` come from layout JSON config (e.g., `{"book": "APCR", "report_type": "daily_pnl"}`).
+- Loaders return **pandas DataFrames**; data functions transform them into `{headers, rows}` for rendering.
 - Column formats and widths must match the output shape of the data function.
 
 #### Layout Example (Daily PnL — Graph 1)
@@ -382,9 +380,23 @@ The Send Email button (on Flash/PAA tabs) opens a modal with:
 
 ## 8. Data Architecture
 
-- **BaseLoader Interface**: Abstract base class defining the data loading contract.
-- **Mock Data**: Initial implementation uses mock CSV/JSON data inferred from reference graphs.
-- **Future Integration**: Real data loaders for KDB+, S3, internal APIs to be implemented later, conforming to the BaseLoader interface.
+- **DataStore** (`data_store.py`): Server-side in-memory store for all loaded data.
+  - Holds DNA data per report type, hist PnL, and live PnL
+  - Data persists in memory between requests (no per-request loading)
+  - Parallel loading via `ThreadPoolExecutor` — multiple sources load simultaneously
+  - Per-source status tracking: `idle → loading → ready/error` with timestamps
+- **Data Functions** (`data_functions.py`): Transform stored data into `{headers, rows}` for rendering.
+  - Signature: `(data_store, params)` — access DataStore directly
+  - Registered in `DATA_FUNCTIONS` dict, referenced by name in layout config
+- **Data Loader** (`data_loader.py`): Contains `BaseLoader` (ABC), `MockLoader`, and `DataLoader` in a single module.
+  - Three sources: `dna` (main report data), `hist_pnl` (historical PnL), `live_pnl` (real-time PnL)
+  - `load_dna_data()` returns dict of pandas DataFrames (not pre-formatted dicts)
+  - `load_hist_pnl()` / `load_live_pnl()` return dict with DataFrame values
+  - `MockLoader` provides realistic data matching Graph 1/Graph 2
+  - `DataLoader` has `NotImplementedError` stubs for real implementation (KDB+, S3, internal APIs)
+- **API Endpoints**:
+  - `POST /load` — loads specified sources into DataStore, returns per-table data and load status
+  - `GET /load/status` — returns current load status per source without triggering a load
 
 ## 9. Configuration (TOML)
 

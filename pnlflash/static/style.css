@@ -24,6 +24,8 @@ body { font-family: Calibri, Arial, sans-serif; font-size: 12px; color: #333; ba
 .status-chip.ok { background: #e8f5e9; color: #2e7d32; }
 .status-chip.warn { background: #fff3e0; color: #e65100; }
 .status-chip.none { background: #f0f0f0; color: #999; }
+.status-chip.loading { background: #e3f2fd; color: #1565c0; }
+.status-chip.error { background: #ffebee; color: #c62828; }
 
 .btn { padding: 4px 10px; border: none; border-radius: 2px; cursor: pointer; font-size: 11px; font-family: inherit; }
 .btn-primary { background: #3498db; color: #fff; }

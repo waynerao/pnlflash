@@ -18,14 +18,14 @@
             "h": 3,
             "id": "apcr_factor_risk",
             "w": 2,
-            "x": 836,
+            "x": 855,
             "y": 10
         },
         {
             "h": 3,
             "id": "apcr_spec_risk",
             "w": 2,
-            "x": 1035,
+            "x": 1050,
             "y": 10
         },
         {
@@ -46,21 +46,21 @@
             "h": 3,
             "id": "paa_by_region",
             "w": 2,
-            "x": 584,
+            "x": 594,
             "y": 126
         },
         {
             "h": 3,
             "id": "jpcr_factor_risk",
             "w": 2,
-            "x": 836,
+            "x": 855,
             "y": 225
         },
         {
             "h": 3,
             "id": "jpcr_spec_risk",
             "w": 2,
-            "x": 1035,
+            "x": 1050,
             "y": 225
         },
         {
@@ -81,7 +81,7 @@
             "h": 2,
             "id": "sl_flow",
             "w": 2,
-            "x": 584,
+            "x": 594,
             "y": 297
         },
         {
@@ -95,21 +95,21 @@
             "h": 4,
             "id": "sl_top10_pnl_positions",
             "w": 3,
-            "x": 584,
+            "x": 599,
             "y": 442
         },
         {
             "h": 3,
             "id": "sl_factor_risk",
             "w": 2,
-            "x": 836,
+            "x": 855,
             "y": 442
         },
         {
             "h": 3,
             "id": "sl_spec_risk",
             "w": 2,
-            "x": 1035,
+            "x": 1050,
             "y": 442
         },
         {
@@ -167,14 +167,14 @@
         "apcr_flow": {
             "col_formats": [
                 "raw",
-                "K",
-                "K",
-                "K"
+                "mm",
+                "mm",
+                "mm"
             ],
             "col_widths": [
-                50,
-                65,
-                65,
+                100,
+                55,
+                55,
                 55
             ],
             "display_rows": 3,
@@ -287,14 +287,14 @@
         "jpcr_flow": {
             "col_formats": [
                 "raw",
-                "K",
-                "K",
-                "K"
+                "mm",
+                "mm",
+                "mm"
             ],
             "col_widths": [
-                50,
-                65,
-                65,
+                100,
+                55,
+                55,
                 55
             ],
             "display_rows": 3,
@@ -368,7 +368,10 @@
         "portfolio_metrics": {
             "col_formats": [
                 "raw",
-                "K",
+                "mm",
+                "mm",
+                "mm",
+                "mm",
                 "K",
                 "K",
                 "K"
@@ -378,7 +381,10 @@
                 65,
                 65,
                 65,
-                65
+                65,
+                60,
+                60,
+                60
             ],
             "display_rows": 4,
             "function": "get_portfolio_metrics",
@@ -409,14 +415,14 @@
         "sl_flow": {
             "col_formats": [
                 "raw",
-                "K",
-                "K",
-                "K"
+                "mm",
+                "mm",
+                "mm"
             ],
             "col_widths": [
-                50,
-                65,
-                65,
+                70,
+                55,
+                55,
                 55
             ],
             "display_rows": 4,
@@ -449,7 +455,7 @@
         "sl_top10_pnl_positions": {
             "col_formats": [
                 "raw",
-                "raw",
+                "K",
                 "K",
                 "K"
             ],

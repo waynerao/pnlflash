@@ -24,12 +24,12 @@ Repo root holds docs and project metadata; all source code lives under `pnlflash
     ├── app.py              # Flask app entry point
     ├── config.py           # Config loader (reads config.toml)
     ├── config.toml         # TOML configuration
-    ├── base_loader.py      # Abstract BaseLoader interface
-    ├── mock_loader.py      # Mock data implementation
+    ├── data_loader.py      # BaseLoader (ABC), MockLoader, DataLoader
+    ├── data_store.py       # Server-side in-memory data store
+    ├── data_functions.py   # Registry of named data functions
     ├── email_builder.py    # HTML email generation
     ├── email_sender.py     # Stub email sending
     ├── formatter.py        # Financial number formatting helpers
-    ├── data_functions.py   # Registry of named data functions
     ├── templates/
     │   ├── layout.html         # Base Flask UI layout
     │   ├── dashboard.html      # Main dashboard with all tabs (incl. Layout Config)
@@ -37,7 +37,7 @@ Repo root holds docs and project metadata; all source code lives under `pnlflash
     ├── static/
     │   └── style.css       # Flask UI styles
     ├── layouts/            # per-report layout JSONs
-    ├── mock_data/          # mock JSON datasets
+    ├── mock_data/          # mock JSON datasets (unused; kept for reference)
     └── output/             # generated previews/sent emails (gitignored)
 ```
 
@@ -46,37 +46,46 @@ Run from repo root: `uv run python pnlflash/app.py`
 ## Phase 2: Mock Data & Data Loader
 
 - [x] Define `BaseLoader` abstract class with methods:
-  - `load_dna_data(date)` — KDB+ data (everything except PnL)
-  - `load_hist_pnl(date)` — S3 historical PnL (shared across tabs)
-  - `load_live_pnl(date)` — Internal real-time PnL (Daily only)
-- [x] Create mock JSON data files matching Graph 1 and Graph 2 structures
-- [x] Implement `MockLoader` that reads from JSON files
-- [x] Verify data shapes with simple test scripts
+  - `load_dna_data(start_date, end_date, report_type)` — returns dict of DataFrames
+  - `load_hist_pnl(report_date)` — S3 historical PnL (shared across tabs)
+  - `load_live_pnl(report_date)` — Internal real-time PnL (Daily only)
+- [x] Implement `MockLoader` returning DataFrames with realistic data matching Graph 1/Graph 2
+- [x] Create empty `DataLoader` class with `NotImplementedError` stubs for real implementation
+- [x] Merged `base_loader.py`, `mock_loader.py`, `dna_loader.py` into single `data_loader.py`
+- [x] Deleted unused `main.py`
 
 ### Data Structures
 
-**Daily PnL data keys:**
-- `systematic_cash_trading_pnl` — per book (APCR/JPCR/SL), columns: TD/MTD/YTD
-- `portfolio_metrics` — aggregated risk metrics
-- `paa_by_region` — region breakdown (HK, SG, CN, JP)
-- `{book}_flow` — flow table per book
-- `{book}_factor_risk` — factor risk per book
-- `{book}_spec_risk` — spec risk per book
-- `apcr_net_platform_value` — APCR NPV
-- `jpcr_net_platform_value` — JPCR NPV
-- `cr_paa_by_strategy` — CR aggregate
-- `cr_flow_paa_by_source_desk` — CR aggregate
-- `sl_top10_pnl_positions` — SL specific
+All data is returned as **pandas DataFrames** (not pre-formatted dicts). Data functions in `data_functions.py` transform DataFrames into `{headers, rows}` for rendering.
 
-**Monthly/Weekly PAA data keys (per book):**
-- `{book}_pcg_pnl` — total with period/YTD
-- `{book}_attribution_by_node` — node-level attribution
-- `{book}_main_attribution` — main attribution detail (CR books only)
-- `{book}_inventory_attribution` — inventory attribution detail (CR books only)
-- `{book}_platform_contribution` — platform contribution (CR books only)
-- `{book}_risk` — gross and risk
-- `market` — market gross figures
-- `index_inventory` — index inventory totals
+**Daily PnL DataFrames** (returned by `load_dna_data` with `report_type="daily_pnl"`):
+- `pnl` — columns: book, label, td, mtd, ytd
+- `portfolio_metrics` — columns: book, delta, gross, long, short, total_risk, factor_risk, spec_risk
+- `paa_by_region` — columns: region, td, mtd, ytd
+- `cr_flow` — columns: book, item, td, mtd_avg, ytd_avg (rows: Gross Flow, Gross Trade-out, CR Retention)
+- `sl_flow` — columns: market, td, mtd_avg, ytd_avg
+- `factor_risk` — columns: book, factor, exposure, pnl
+- `spec_risk` — columns: book, ticker, exposure, pnl
+- `net_platform_value` — columns: book, item, td, mtd, ytd
+- `cr_strategy_paa` — columns: region, pnl, tracking, inventory
+- `cr_flow_paa` — columns: source, desk, value, pnl
+- `sl_top_positions` — columns: ticker, pnl, shares, value
+
+**Monthly/Weekly PAA DataFrames** (returned by `load_dna_data` with `report_type="monthly_paa"` or `"weekly_paa"`):
+- `pcg_pnl` — columns: book, period_pnl, ytd_pnl (with `df.attrs["period_label"]`, `df.attrs["ytd_label"]`)
+- `attribution_by_node` — columns: book, node, period_pnl, ytd_pnl
+- `main_attribution` — columns: book, strategy, period_pnl, ytd_pnl
+- `inventory_attribution` — columns: book, index, period_pnl, ytd_pnl
+- `platform_contribution` — columns: book, item, period_pnl, ytd_pnl
+- `risk` — columns: book, gross, risk
+- `market` — columns: market, gross
+- `index_inventory` — columns: index, gross
+
+**Hist PnL** (returned by `load_hist_pnl`):
+- `{"latest_date": str, "pnl": DataFrame(book, td, mtd, ytd)}`
+
+**Live PnL** (returned by `load_live_pnl`):
+- `{"timestamp": str, "pnl": DataFrame(book, live_pnl)}`
 
 ### Hist PnL & Adjustment Logic
 
@@ -165,7 +174,7 @@ Run from repo root: `uv run python pnlflash/app.py`
 ## Phase 7: Data Functions & Layout Infrastructure
 
 - [x] Create `data_functions.py` — registry of named data functions
-  - Each function takes `(loader, date, params)` and returns a dict with headers/rows
+  - Each function takes `(data_store, params)` and returns a dict with `{headers, rows}`
   - 18 functions for all existing tables (daily PnL, monthly/weekly PAA)
   - Registered in `DATA_FUNCTIONS` dict
 - [x] Create `layouts/` directory
@@ -348,9 +357,55 @@ Run from repo root: `uv run python pnlflash/app.py`
   - `send_email()` creates proper MIME message with Subject, From, To, CC headers
   - `.eml` files can be double-clicked to open directly in Outlook for testing
 
+### Phase 16: Data Loading Architecture Redesign ✅
+
+- [x] `DataStore` class (`data_store.py`) — server-side data persistence
+  - Holds DNA data per report type, hist PnL, live PnL in memory
+  - Parallel loading via `ThreadPoolExecutor`
+  - Per-source status tracking: `idle → loading → ready/error` with timestamps
+  - Stores `{start_date, end_date}` per report type for data functions to access
+- [x] Data functions (`data_functions.py`) — signature changed from `(loader, start_date, end_date, params)` to `(data_store, params)`
+  - Functions access `DataStore` directly instead of calling loader
+  - Removed caching layer (DataStore is the single source of truth)
+- [x] App routes (`app.py`) — updated for DataStore pattern
+  - `/load` changed from GET to POST, accepts `sources` array (dna, hist_pnl, live_pnl)
+  - Added `/load/status` GET endpoint for checking load status without triggering load
+  - `preview` and `send` routes pass `data_store` instead of `loader`
+- [x] Email builder (`email_builder.py`) — updated function signatures for DataStore
+- [x] Frontend (`dashboard.html`) — updated for new data loading flow
+  - `loadData()` uses POST with JSON body and `sources` array
+  - Status chips show loading/ready/error states from `load_status` response
+  - Button handlers use correct source names (hist_pnl, live_pnl)
+  - Send/preview endpoints no longer pass start_date/end_date
+- [x] CSS — added `loading` and `error` status chip styles
+
+### Phase 17: DataFrame Pipeline & Table Structure Fixes ✅
+
+- [x] Migrated MockLoader from JSON-based to DataFrame-based data
+  - `load_dna_data()` returns dict of pandas DataFrames (not pre-formatted {headers, rows})
+  - `load_hist_pnl()` / `load_live_pnl()` return DataFrames instead of nested dicts
+  - Merged `base_loader.py`, `mock_loader.py`, `dna_loader.py` into `data_loader.py`
+  - Created empty `DataLoader` class with `NotImplementedError` stubs for real implementation
+  - Deleted unused `main.py`
+- [x] Data functions rewritten to transform DataFrames → {headers, rows}
+  - Helper functions: `_df_to_table(df, headers)`, `_with_total(df, label_col, sum_cols)`
+  - Mixed formatting: CR Retention rows pre-formatted as "XX.X%" strings, other rows stay numeric
+  - `df.attrs` used for dynamic period labels in monthly/weekly PAA headers
+- [x] All 17 daily PnL tables fixed to match Graph 1.jpg exactly
+  - Portfolio Metrics: books as rows with Delta/Gross/Long/Short/Total Risk/Factor Risk/Spec Risk columns
+  - Factor Risk: per-book filtering with Factor/Exposure/PnL columns
+  - Spec Risk: per-book filtering with Spec(ticker)/Exposure/PnL columns
+  - Flow: CR books use cr_flow DataFrame (Gross Flow/Trade-out/CR Retention); SL uses sl_flow by market
+  - Net Platform Value: 4 columns (item/TD/MTD/YTD) per book
+  - CR PAA By Strategy: regions as rows, PnL/Tracking/Inventory columns
+  - CR Flow & PAA: Source/Desk/Value/PnL columns
+  - SL Top 10: Ticker/PnL/Shares/Value, sorted by value desc
+- [x] Layout config updated: flow table col_formats K→mm, SL top 10 col_formats [raw,raw,K,K]→[raw,K,K,K]
+- [x] App updated: `save_portfolio_metrics()` uses `df.to_csv()`, hist_pnl converts DataFrame via `.set_index("book").to_dict("index")`
+
 ## Build Order
 
-Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7 → Phase 8 → Phase 9 → Phase 10 → Phase 11 → Phase 12 → Phase 13 → Phase 14 → Phase 15
+Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7 → Phase 8 → Phase 9 → Phase 10 → Phase 11 → Phase 12 → Phase 13 → Phase 14 → Phase 15 → Phase 16 → Phase 17
 
 ## Key Decisions
 
@@ -359,7 +414,7 @@ Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5 → Phase 6 → Phase 7 
 | Framework | Flask | Simple routing, native Jinja2, good for token URLs and multi-user |
 | Config format | TOML | Clean, readable, supports nested sections |
 | Auth | Token in TOML | No DB, no expiry — simplest approach for intranet |
-| Data | Mock JSON | Build templates first, plug in real loaders later |
+| Data | DataFrames via MockLoader | DataFrame pipeline: Loader → DataStore → Data Functions → {headers, rows} |
 | Email | Stub sender | Focus on HTML generation; real SMTP later |
 | Env | uv | User's preferred Python environment tool |
 | Hist PnL | Shared across tabs | Single S3 load, all tabs read from same cache |
